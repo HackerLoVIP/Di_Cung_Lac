@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.routers import auth, provinces, locations
+from app.routers import auth, provinces, locations, itineraries
 
 # Khoi tao bang du lieu neu chua ton tai
 Base.metadata.create_all(bind=engine)
@@ -25,6 +25,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(provinces.router)
 app.include_router(locations.router)
+app.include_router(itineraries.router)
 
 @app.get("/")
 def read_root():
