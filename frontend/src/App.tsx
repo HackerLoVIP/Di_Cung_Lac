@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { ChatbotWidget } from './components/ChatbotWidget';
 import { Home } from './pages/Home';
 import { Explore } from './pages/Explore';
 import { PlanTrip } from './pages/PlanTrip';
@@ -28,6 +29,7 @@ export const App: React.FC = () => {
             </Routes>
           </main>
           <Footer />
+          <ChatbotWidget />
         </div>
         <Toaster position="top-right" />
       </BrowserRouter>

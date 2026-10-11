@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { itineraryAPI, provinceAPI } from '../services/api';
-import { Itinerary, Province } from '../types';
+import axios from 'axios';
+import { itineraryAPI } from '../services/api';
+import { Itinerary } from '../types';
 import { ItineraryTimeline } from '../components/ItineraryTimeline';
 import { useAuth } from '../contexts/AuthContext';
-import { FaBookmark, FaShareAlt, FaMoneyBillWave, FaMapMarkerAlt, FaCalendarAlt, FaSpinner } from 'react-icons/fa';
+import { FaBookmark, FaShareAlt, FaMoneyBillWave, FaMapMarkerAlt, FaCalendarAlt, FaSpinner, FaCloudSun } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 export const PlanTrip: React.FC = () => {
@@ -18,15 +19,19 @@ export const PlanTrip: React.FC = () => {
   const prompt = searchParams.get('prompt') || '';
 
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
+  const [weather, setWeather] = useState<{ temp: string; condition: string; icon: string; tip: string } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
   useEffect(() => {
     setLoading(true);
-    itineraryAPI
-      .generate(provinceId, numDays, numNights, prompt)
-      .then((data) => {
-        setItinerary(data);
+    Promise.all([
+      itineraryAPI.generate(provinceId, numDays, numNights, prompt),
+      axios.get(`/api/ai/weather?province_id=${provinceId}`).then((r) => r.data).catch(() => null),
+    ])
+      .then(([itinData, weatherData]) => {
+        setItinerary(itinData);
+        setWeather(weatherData);
       })
       .catch((err) => {
         console.error(err);
@@ -98,7 +103,7 @@ export const PlanTrip: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <FaShareAlt /> Chia sẻ
           </button>
@@ -111,6 +116,22 @@ export const PlanTrip: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Weather Badge */}
+      {weather && (
+        <div className="bg-sky-50 border border-sky-200/80 p-4 rounded-2xl flex items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{weather.icon}</span>
+            <div>
+              <span className="font-bold text-sky-900 text-sm">{weather.temp} - {weather.condition}</span>
+              <p className="text-sky-700">{weather.tip}</p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-block bg-sky-200/60 text-sky-800 font-semibold px-2.5 py-1 rounded-lg text-[11px]">
+            Dự báo thông minh
+          </span>
+        </div>
+      )}
 
       {/* Cost Summary Box */}
       <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
