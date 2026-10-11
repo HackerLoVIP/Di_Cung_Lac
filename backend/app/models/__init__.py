@@ -1,6 +1,6 @@
 from app.models.user import User
 from app.models.province import Province
-from app.models.location import Location
+from app.models.location import Location, MenuItem
 from app.models.itinerary import Itinerary, ItineraryItem
 from app.models.review import Review
 from app.models.wishlist import Wishlist
@@ -12,6 +12,7 @@ __all__ = [
     "User",
     "Province",
     "Location",
+    "MenuItem",
     "Itinerary",
     "ItineraryItem",
     "Review",

@@ -8,7 +8,7 @@ class ItineraryGenerateRequest(BaseModel):
     province_id: int
     num_days: int = 3
     num_nights: int = 2
-    prompt: Optional[str] = None  # Nhap yeu cau AI (vd: di gia dinh, ngan sach tiet kiem)
+    prompt: Optional[str] = None
 
 class ItineraryItemResponse(BaseModel):
     id: int
@@ -16,6 +16,8 @@ class ItineraryItemResponse(BaseModel):
     time_slot: str
     order_in_day: int
     note: Optional[str] = None
+    travel_distance_km: Optional[float] = 0.0
+    travel_time_minutes: Optional[int] = 0
     location: LocationResponse
 
     class Config:

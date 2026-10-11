@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -31,6 +31,10 @@ class ItineraryItem(Base):
     time_slot = Column(String(20), nullable=False)  # vd: '08:00', '11:30'
     order_in_day = Column(Integer, default=0)
     note = Column(Text, nullable=True)
+    
+    # Truong khoang cach va thoi gian di chuyen tu diem truoc do
+    travel_distance_km = Column(Float, default=0.0)
+    travel_time_minutes = Column(Integer, default=0)
 
     itinerary = relationship("Itinerary", back_populates="items")
     location = relationship("Location")
