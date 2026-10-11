@@ -1,3 +1,10 @@
+export interface MenuItem {
+  id: number;
+  name: string;
+  price_vnd: number;
+  is_signature: boolean;
+}
+
 export interface Province {
   id: number;
   name: string;
@@ -24,7 +31,10 @@ export interface Location {
   avg_cost_vnd: number;
   rating: number;
   is_indoor?: boolean;
+  tips?: string;
+  transport_info?: string;
   province_name?: string;
+  menu_items?: MenuItem[];
 }
 
 export interface ItineraryItem {
@@ -33,6 +43,8 @@ export interface ItineraryItem {
   time_slot: string;
   order_in_day: number;
   note?: string;
+  travel_distance_km?: number;
+  travel_time_minutes?: number;
   location: Location;
 }
 
