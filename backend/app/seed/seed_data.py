@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def run_seed():
-    print("⏳ Dang tao cac bang CSDL...")
+    print("[INFO] Dang tao cac bang CSDL...")
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
@@ -23,7 +23,7 @@ def run_seed():
                 role="admin"
             )
             db.add(admin)
-            print("✅ Da tao tai khoan Admin mac dinh: admin@dicunglac.vn / 123456")
+            print("[OK] Da tao tai khoan Admin mac dinh: admin@dicunglac.vn / 123456")
 
         # 2. Seed Province: Vung Tau & Da Lat
         vt = db.query(Province).filter(Province.slug == "vung-tau").first()
@@ -39,7 +39,7 @@ def run_seed():
             )
             db.add(vt)
             db.flush()
-            print("✅ Da tao tinh thanh: Vung Tau")
+            print("[OK] Da tao tinh thanh: Vung Tau")
 
         dl = db.query(Province).filter(Province.slug == "da-lat").first()
         if not dl:
@@ -54,7 +54,7 @@ def run_seed():
             )
             db.add(dl)
             db.flush()
-            print("✅ Da tao tinh thanh: Da Lat")
+            print("[OK] Da tao tinh thanh: Da Lat")
 
         # 3. Seed Dia diem Vung Tau (~25 dia diem)
         vt_locations = [
@@ -136,10 +136,10 @@ def run_seed():
                 db.add(loc)
 
         db.commit()
-        print("🎉 Nap du lieu mau thanh cong!")
+        print("[SUCCESS] Nap du lieu mau thanh cong!")
     except Exception as e:
         db.rollback()
-        print(f"❌ Loi khi seed data: {e}")
+        print(f"[ERROR] Loi khi seed data: {e}")
     finally:
         db.close()
 
