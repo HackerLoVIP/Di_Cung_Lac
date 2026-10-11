@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { ItineraryItem } from '../types';
-import { FaMotorcycle, FaRoute, FaCrosshairs, FaExpand, FaCompass, FaSpinner } from 'react-icons/fa';
+import { FaMotorcycle, FaCrosshairs, FaExpand, FaSpinner, FaMapMarkedAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 interface RouteMapProps {
@@ -23,37 +23,48 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const activeRouteLayerRef = useRef<L.Polyline | null>(null);
-  const userMarkerRef = useRef<L.Marker | null>(null);
 
   const [segments, setSegments] = useState<RouteSegment[]>([]);
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null);
   const [loadingRoute, setLoadingRoute] = useState<boolean>(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [gettingGPS, setGettingGPS] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  // 1. Khoi tao Ban do Leaflet
   useEffect(() => {
     if (!mapContainerRef.current || items.length === 0) return;
 
+    // Fix loi React StrictMode / Re-render: Don dep Leaflet instance cu
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
     }
+    if ((mapContainerRef.current as any)._leaflet_id) {
+      (mapContainerRef.current as any)._leaflet_id = null;
+    }
 
     const firstLoc = items[0].location;
-    // Khoi tao ban do
-    const map = L.map(mapContainerRef.current).setView([firstLoc.latitude, firstLoc.longitude], 12);
+    const map = L.map(mapContainerRef.current, {
+      zoomControl: true,
+      scrollWheelZoom: true,
+    }).setView([firstLoc.latitude, firstLoc.longitude], 13);
     mapInstanceRef.current = map;
 
-    // Lop ban do CartoDB Positron cuc ky sang sua, sac net, chuan giao dien cong nghe hien dai
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
+    // Su dung OpenStreetMap tile chuan nhat, ho tro SSL, khong bi chan tile
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(map);
 
-    // 2. Ve cac Markers dia diem lich trinh
-    renderMarkersAndRoutes(map, userLocation);
+    // Goi invalidateSize de tranh loi ban do bi xam hoac khong full vien
+    setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 300);
+
+    // Ve Marker va Route
+    renderRoute(map, userLocation);
 
     return () => {
       if (mapInstanceRef.current) {
@@ -61,23 +72,21 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
         mapInstanceRef.current = null;
       }
     };
-  }, [items, userLocation]);
+  }, [items, userLocation, isFullscreen]);
 
-  // Ham ve Marker va goi OSRM tim duong that bam sat mat duong
-  const renderMarkersAndRoutes = async (map: L.Map, currentUserLoc: { lat: number; lng: number } | null) => {
+  const renderRoute = async (map: L.Map, currentUserLoc: { lat: number; lng: number } | null) => {
     setLoadingRoute(true);
 
-    // Danh sach cac moc toa do can ve
     const points: Array<{ lat: number; lng: number; name: string; isUser?: boolean; time_slot?: string; address?: string }> = [];
 
-    // Neu da co GPS nguoi dung (vi du dang o TP.HCM), them vao lam Diem bat dau (Moc 0)
+    // Neu da co GPS thuc te cua nguoi dung, dat lam diem xuat phat (Diem 0)
     if (currentUserLoc && dayNumber === 1) {
       points.push({
         lat: currentUserLoc.lat,
         lng: currentUserLoc.lng,
         name: 'Vị trí thực tế của bạn (Điểm xuất phát)',
         isUser: true,
-        address: 'Định vị GPS thực tế từ thiết bị của bạn',
+        address: 'Tọa độ GPS thiết bị của bạn',
       });
     }
 
@@ -91,72 +100,50 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
       });
     });
 
-    // Dat cac Marker len ban do
+    // Dat Markers
     points.forEach((p, idx) => {
-      let iconHtml = '';
-      if (p.isUser) {
-        iconHtml = `
-          <div style="
-            background: #ef4444;
-            color: white;
-            font-weight: 800;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 3px solid white;
-            box-shadow: 0 4px 14px rgba(239,68,68,0.5);
-            font-size: 14px;
-            animation: pulse 1.5s infinite;
-          ">
-            📍
-          </div>
-        `;
-      } else {
-        const markerNum = currentUserLoc && dayNumber === 1 ? idx : idx + 1;
-        iconHtml = `
-          <div style="
-            background: #00B14F;
-            color: white;
-            font-weight: 800;
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 3px solid white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-            font-size: 13px;
-          ">
-            ${markerNum}
-          </div>
-        `;
-      }
+      const isStart = p.isUser;
+      const markerText = isStart ? '📍' : `${currentUserLoc && dayNumber === 1 ? idx : idx + 1}`;
+      const bgColor = isStart ? '#ef4444' : '#00B14F';
 
       const customIcon = L.divIcon({
-        className: 'route-marker',
-        html: iconHtml,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
+        className: 'route-marker-icon',
+        html: `
+          <div style="
+            background: ${bgColor};
+            color: white;
+            font-weight: 800;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-size: 13px;
+          ">
+            ${markerText}
+          </div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
       });
 
       L.marker([p.lat, p.lng], { icon: customIcon })
         .addTo(map)
         .bindPopup(`
-          <div style="font-family: inherit; width: 220px; padding: 2px;">
-            <div style="font-weight: 800; font-size: 14px; color: ${p.isUser ? '#ef4444' : '#1e293b'}; margin-bottom: 4px;">
-              ${p.isUser ? '📍 ' : `(${idx}) `}${p.name}
+          <div style="font-family: inherit; width: 200px;">
+            <div style="font-weight: 800; font-size: 13px; color: #1e293b; margin-bottom: 2px;">
+              ${isStart ? '📍 ' : `(${idx}) `}${p.name}
             </div>
-            ${p.time_slot ? `<div style="font-size: 11px; color: #00B14F; font-weight: 700; margin-bottom: 2px;">⏰ Giờ ghé: ${p.time_slot}</div>` : ''}
-            <div style="font-size: 11px; color: #64748b;">📍 ${p.address || ''}</div>
+            ${p.time_slot ? `<div style="font-size: 11px; color: #00B14F; font-weight: 700; margin-bottom: 2px;">⏰ ${p.time_slot}</div>` : ''}
+            <div style="font-size: 11px; color: #64748b;">${p.address || ''}</div>
           </div>
         `);
     });
 
-    // Goi OSRM de lay tuyen duong di that bam sat mat duong
+    // Lay Route tu OSRM
     const segList: RouteSegment[] = [];
 
     for (let i = 0; i < points.length - 1; i++) {
@@ -200,43 +187,49 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
       const fullPolyline = L.polyline(allCoords, {
         color: '#00B14F',
         weight: 6,
-        opacity: 0.85,
+        opacity: 0.9,
         lineCap: 'round',
         lineJoin: 'round',
       }).addTo(map);
 
       activeRouteLayerRef.current = fullPolyline;
       map.fitBounds(fullPolyline.getBounds(), { padding: [50, 50] });
+    } else {
+      // Fallback neu OSRM timeout: noi thang cac toa do
+      const fallbackCoords: [number, number][] = points.map((p) => [p.lat, p.lng]);
+      const fallbackLine = L.polyline(fallbackCoords, { color: '#00B14F', weight: 4, dashArray: '6, 6' }).addTo(map);
+      activeRouteLayerRef.current = fallbackLine;
+      map.fitBounds(fallbackLine.getBounds(), { padding: [50, 50] });
     }
   };
 
-  // Ham bat dinh vi GPS thuc te tu trinh duyet
+  // Lay toa do GPS thuc te tu thiet bi
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
-      toast.error('Trình duyệt của bạn không hỗ trợ định vị GPS');
+      toast.error('Trình duyệt không hỗ trợ Geolocation GPS');
       return;
     }
 
     setGettingGPS(true);
-    toast('Đang định vị tọa độ thực tế của bạn...', { icon: '🛰️' });
+    toast('Đang dò tìm tọa độ GPS thực tế của bạn...', { icon: '🛰️' });
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         setUserLocation({ lat: latitude, lng: longitude });
         setGettingGPS(false);
-        toast.success(`Đã xác định vị trí thực tế của bạn (${latitude.toFixed(4)}, ${longitude.toFixed(4)})! Đang vẽ tuyến đường từ đây đến điểm du lịch.`);
+        toast.success(`Đã nhận diện vị trí thực tế của bạn (${latitude.toFixed(4)}, ${longitude.toFixed(4)})! Tuyến đường sẽ tính từ đây.`);
       },
       (err) => {
         setGettingGPS(false);
         console.error(err);
-        toast.error('Không thể lấy vị trí. Vui lòng cho phép quyền truy cập vị trí trên trình duyệt.');
+        toast.error('Không thể lấy vị trí. Hãy bấm "Cho phép" khi trình duyệt hỏi quyền truy cập vị trí.');
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
-  // Chon chang di chuyen de zoom vao
+  // Chon chang zoom
   const handleSelectSegment = (index: number | null) => {
     setSelectedSegmentIndex(index);
     if (!mapInstanceRef.current) return;
@@ -250,7 +243,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
     if (index === null) {
       const allCoords = segments.flatMap((s) => s.coordinates);
       if (allCoords.length > 0) {
-        const full = L.polyline(allCoords, { color: '#00B14F', weight: 6, opacity: 0.85 }).addTo(map);
+        const full = L.polyline(allCoords, { color: '#00B14F', weight: 6, opacity: 0.9 }).addTo(map);
         activeRouteLayerRef.current = full;
         map.fitBounds(full.getBounds(), { padding: [50, 50] });
       }
@@ -273,8 +266,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
 
   return (
     <div className={`space-y-4 ${isFullscreen ? 'fixed inset-0 z-50 bg-white p-6 flex flex-col' : ''}`}>
-      {/* Thanh dieu huong Navigation Panel kieu Grab */}
-      <div className="bg-slate-900 text-white p-4 sm:p-5 rounded-2xl shadow-xl space-y-3">
+      {/* Control Panel kieu Grab */}
+      <div className="bg-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-xl space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#00B14F] flex items-center justify-center text-white text-lg shadow-md shadow-[#00B14F]/40">
@@ -282,23 +275,23 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
             </div>
             <div>
               <h4 className="font-black text-sm tracking-wide text-emerald-400">
-                ĐIỀU HƯỚNG THEO MẶT ĐƯỜNG (GRAB / GOOGLE MAPS ROUTING)
+                BẢN ĐỒ ĐIỀU HƯỚNG BÁM ĐƯỜNG (GRAB / GOOGLE MAPS ROUTING)
               </h4>
               <p className="text-[11px] text-slate-400">
-                Tuyến đường uốn lượn theo từng con phố thực tế, đo khoảng cách và thời gian chạy xe chuẩn xác
+                Hệ thống tự động vẽ đường uốn lượn theo từng góc phố và đo khoảng cách chuẩn xác
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Nut bat GPS thuc te */}
+            {/* Nut bat GPS */}
             <button
               onClick={handleGetCurrentLocation}
               disabled={gettingGPS}
               className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-red-600/30 cursor-pointer disabled:opacity-50"
             >
               {gettingGPS ? <FaSpinner className="animate-spin" /> : <FaCrosshairs />}
-              {userLocation ? 'Đã bật GPS thực tế' : 'Lấy vị trí GPS của tôi'}
+              {userLocation ? 'Đã bật GPS vị trí của bạn' : 'Lấy vị trí GPS của tôi'}
             </button>
 
             {/* Nut xem toan bo */}
@@ -313,7 +306,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
               Xem toàn cảnh ({segments.length} chặng)
             </button>
 
-            {/* Nut phong to man hinh */}
+            {/* Nut phong to */}
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
               className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-xl transition-colors cursor-pointer"
@@ -324,11 +317,11 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
           </div>
         </div>
 
-        {/* Danh sach cac chang di chuyen */}
+        {/* Danh sach cac chang */}
         {loadingRoute ? (
           <div className="text-xs text-slate-400 py-2 flex items-center gap-2 animate-pulse">
             <FaSpinner className="animate-spin text-emerald-400" />
-            <span>Đang nạp dữ liệu điều hướng giao thông thực tế...</span>
+            <span>Đang vẽ tuyến đường di chuyển thực tế từ vệ tinh...</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
@@ -345,10 +338,10 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
                 <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-black">
                   {idx + 1}
                 </span>
-                <span className="max-w-[140px] truncate">{seg.fromName}</span>
+                <span className="max-w-[130px] truncate">{seg.fromName}</span>
                 <span>➔</span>
-                <span className="max-w-[140px] truncate">{seg.toName}</span>
-                <span className="bg-black/20 px-2 py-0.5 rounded-md text-[11px] font-semibold text-emerald-300">
+                <span className="max-w-[130px] truncate">{seg.toName}</span>
+                <span className="bg-black/25 px-2 py-0.5 rounded-md text-[11px] font-semibold text-emerald-300">
                   {seg.distanceKm} km • ~{seg.durationMinutes}p
                 </span>
               </button>
@@ -356,9 +349,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
           </div>
         )}
 
-        {/* Thong tin chang dang chon */}
         {selectedSegmentIndex !== null && segments[selectedSegmentIndex] && (
-          <div className="bg-slate-800/90 border border-slate-700 p-3.5 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-slate-200">
+          <div className="bg-slate-800/95 border border-slate-700 p-3.5 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-slate-200">
             <div>
               <span className="text-[#00B14F] font-bold">Chặng {selectedSegmentIndex + 1}: </span>
               <span className="font-extrabold text-white">{segments[selectedSegmentIndex].fromName}</span>
@@ -373,11 +365,11 @@ export const RouteMap: React.FC<RouteMapProps> = ({ items, dayNumber }) => {
         )}
       </div>
 
-      {/* Map Canvas: Chieu cao 560px to ro, hoanh trang */}
+      {/* Map Canvas: Cao 560px, rounded-3xl dep nhu ung dung hien dai */}
       <div
         ref={mapContainerRef}
-        className={`w-full rounded-3xl overflow-hidden border-2 border-slate-200 shadow-xl z-10 ${
-          isFullscreen ? 'flex-1 min-h-[500px]' : 'h-[500px] sm:h-[560px]'
+        className={`w-full rounded-3xl overflow-hidden border border-slate-300 shadow-xl bg-slate-100 z-0 ${
+          isFullscreen ? 'flex-1 min-h-[500px]' : 'h-[520px] sm:h-[580px]'
         }`}
       />
     </div>
