@@ -104,53 +104,59 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-amber-200/80 space-y-5 my-auto max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div 
+        className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-amber-200/90 my-auto max-h-[92vh] flex flex-col relative z-[100000]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-amber-100 pb-3.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center text-lg shadow-2xs">
+        <div className="flex items-center justify-between border-b border-amber-100 pb-3.5 mb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center text-xl shadow-xs shrink-0">
               <FaCrown />
             </div>
             <div>
-              <h3 className="font-black text-slate-900 text-lg">Nâng Cấp VIP Travel Pro</h3>
-              <p className="text-xs text-slate-400">Mở khóa toàn bộ sức mạnh AI & Bản đồ không giới hạn</p>
+              <h3 className="font-black text-slate-900 text-lg leading-tight">Nâng Cấp VIP Travel Pro</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Mở khóa toàn bộ sức mạnh AI & Bản đồ không giới hạn</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center font-bold text-sm cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold text-sm cursor-pointer transition shrink-0"
           >
             ✕
           </button>
         </div>
 
-        {/* Canh bao neu chua dang nhap */}
-        {!user && (
-          <div className="bg-amber-50 border border-amber-300 p-3 rounded-2xl flex items-center justify-between gap-3 text-xs">
-            <div className="text-amber-900 font-medium">
-              ⚠️ Bạn chưa đăng nhập. Vui lòng đăng nhập để hệ thống kích hoạt VIP cho tài khoản của bạn.
+        {/* Modal Body with internal scroll if height is restricted */}
+        <div className="overflow-y-auto space-y-4 pr-1 flex-1">
+          {/* Canh bao neu chua dang nhap */}
+          {!user && (
+            <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="text-amber-950 font-medium">
+                ⚠️ Bạn chưa đăng nhập. Vui lòng đăng nhập để hệ thống tự động kích hoạt VIP cho tài khoản của bạn.
+              </div>
+              <a
+                href="/login"
+                className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-xs text-center self-end sm:self-auto cursor-pointer"
+              >
+                Đăng nhập
+              </a>
             </div>
-            <a
-              href="/login"
-              className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-2xs"
-            >
-              Đăng nhập
-            </a>
-          </div>
-        )}
+          )}
 
         {/* Step 1: Chon goi nang cap (khi chua tao order) */}
         {!order && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
               {/* Goi 7 ngay */}
               <button
                 type="button"
                 onClick={() => setSelectedPlan('vip_trial')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
+                className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_trial'
-                    ? 'border-amber-500 bg-amber-50/90 ring-3 ring-amber-300/80 shadow-sm scale-102'
+                    ? 'border-amber-500 bg-amber-50/90 ring-2 ring-amber-400/80 shadow-md scale-102'
                     : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
@@ -160,7 +166,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     {selectedPlan === 'vip_trial' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                 </div>
-                <div>
+                <div className="py-1">
                   <p className="text-sm font-black text-slate-900">7 Ngày</p>
                   <p className="text-base font-black text-amber-900 mt-0.5">19.000 đ</p>
                 </div>
@@ -170,22 +176,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedPlan('vip_1month')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
+                className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_1month'
-                    ? 'border-amber-500 bg-amber-50/90 ring-3 ring-amber-300/80 shadow-sm scale-102'
+                    ? 'border-amber-500 bg-amber-50/90 ring-2 ring-amber-400/80 shadow-md scale-102'
                     : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
-                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-black bg-amber-400 text-amber-950 px-2.5 py-0.5 rounded-full shadow-xs border border-amber-300">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-black bg-amber-400 text-amber-950 px-2.5 py-0.5 rounded-full shadow-sm border border-amber-300 z-10 whitespace-nowrap">
                   Phổ biến nhất 🔥
                 </span>
-                <div className="flex items-center justify-between w-full pt-1">
+                <div className="flex items-center justify-between w-full pt-1.5">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phượt thủ</span>
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_1month' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
                     {selectedPlan === 'vip_1month' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                 </div>
-                <div>
+                <div className="py-1">
                   <p className="text-sm font-black text-slate-900">1 Tháng</p>
                   <p className="text-base font-black text-amber-900 mt-0.5">49.000 đ</p>
                 </div>
@@ -195,9 +201,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedPlan('vip_lifetime')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
+                className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_lifetime'
-                    ? 'border-amber-500 bg-amber-50/90 ring-3 ring-amber-300/80 shadow-sm scale-102'
+                    ? 'border-amber-500 bg-amber-50/90 ring-2 ring-amber-400/80 shadow-md scale-102'
                     : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
@@ -207,7 +213,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     {selectedPlan === 'vip_lifetime' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                 </div>
-                <div>
+                <div className="py-1">
                   <p className="text-sm font-black text-slate-900">Vĩnh viễn</p>
                   <p className="text-base font-black text-amber-900 mt-0.5">149.000 đ</p>
                 </div>
@@ -335,6 +341,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
