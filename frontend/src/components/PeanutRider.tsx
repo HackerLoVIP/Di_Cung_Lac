@@ -16,19 +16,19 @@ export const PeanutRider: React.FC = () => {
   };
 
   return (
-    <div className="absolute -bottom-2 left-0 right-0 h-16 pointer-events-none overflow-hidden z-20">
+    <div className="absolute -bottom-2.5 left-0 right-0 h-11 pointer-events-none overflow-hidden z-20">
       {/* Vạch đường cao tốc / lộ trình nét đứt chạy ngầm dưới navbar */}
-      <div className="absolute bottom-1 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
+      <div className="absolute bottom-1 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
 
       {/* ĐOÀN PHƯỢT 2 XE MOTOR CỦA CÁC BÉ LẠC */}
       <div
-        className="peanut-rider-container absolute bottom-1 flex items-end gap-5 cursor-pointer pointer-events-auto"
+        className="peanut-rider-container absolute bottom-0.5 flex items-end gap-3.5 cursor-pointer pointer-events-auto"
         onClick={handleHonk}
         title="Bấm vào đoàn xe Bé Lạc để bóp còi bíp bíp!"
       >
         {/* Bóng thoại còi xe vui nhộn khi bấm */}
         {honkText && (
-          <div className="absolute -top-7 left-12 bg-white border-2 border-amber-400 text-amber-950 font-black text-[11px] px-3 py-0.5 rounded-full shadow-lg whitespace-nowrap animate-bounce z-40">
+          <div className="absolute -top-6 left-6 bg-white border border-amber-400 text-amber-950 font-black text-[10px] px-2.5 py-0.5 rounded-full shadow-md whitespace-nowrap animate-bounce z-40">
             {honkText}
           </div>
         )}
@@ -36,12 +36,12 @@ export const PeanutRider: React.FC = () => {
         {/* ================= XE 1: SPORTBIKE PHÂN KHỐI LỚN (CHỞ CẶP ĐÔI BÉ LẠC) ================= */}
         <div className="relative animate-peanut-bounce">
           <svg
-            width="125"
-            height="58"
+            width="76"
+            height="36"
             viewBox="0 0 130 60"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="filter drop-shadow-md select-none"
+            className="filter drop-shadow-xs select-none"
           >
             {/* Khói pô xả ra sau */}
             <g className="animate-pulse">
@@ -153,12 +153,12 @@ export const PeanutRider: React.FC = () => {
         {/* ================= XE 2: ADVENTURE TOURING PHƯỢT THỦ (ĐI SAU BÁM ĐUÔI) ================= */}
         <div className="relative animate-peanut-bounce" style={{ animationDelay: '0.15s' }}>
           <svg
-            width="125"
-            height="58"
+            width="76"
+            height="36"
             viewBox="0 0 130 60"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="filter drop-shadow-md select-none"
+            className="filter drop-shadow-xs select-none"
           >
             {/* Khói pô xe 2 */}
             <g className="animate-pulse">
