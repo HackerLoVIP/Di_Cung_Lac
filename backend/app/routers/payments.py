@@ -45,28 +45,19 @@ def get_plans():
 def create_order(
     req: CreatePaymentRequest,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     plan = PLANS_CONFIG.get(req.plan_type)
     if not plan:
         raise HTTPException(status_code=400, detail="Gói nâng cấp không hợp lệ")
 
-    # Neu chua dang nhap, lay tai khoan demo dau tien hoac tao guest
-    user_id = current_user.id if current_user else 1
-    # Dam bao co user ton tai
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        user = db.query(User).first()
-        if user:
-            user_id = user.id
-
-    # Sinh ma don hang doc nhat
+    # Sinh ma don hang doc nhat theo user ID that
     random_suffix = random.randint(1000, 9999)
-    order_code = f"DCL{user_id}_{random_suffix}"
+    order_code = f"DCL{current_user.id}_{random_suffix}"
     transfer_content = f"DCL VIP {order_code}"
 
     transaction = PaymentTransaction(
-        user_id=user_id,
+        user_id=current_user.id,
         order_code=order_code,
         amount=plan["amount"],
         plan_type=req.plan_type,
@@ -78,9 +69,7 @@ def create_order(
     db.commit()
     db.refresh(transaction)
 
-
-    # Tao link ma QR SePay VietQR
-    # Cu phap link QR chuan SePay: https://qr.sepay.vn/img?bank={bank}&acc={acc}&template=compact&amount={amount}&des={des}
+    # Tao link ma QR SePay VietQR that
     qr_url = f"https://qr.sepay.vn/img?bank={SEPAY_BANK_NAME}&acc={SEPAY_ACCOUNT_NO}&template=compact&amount={int(plan['amount'])}&des={transfer_content}"
 
     return {
@@ -99,10 +88,11 @@ def create_order(
 def check_payment_status(
     order_code: str,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     transaction = db.query(PaymentTransaction).filter(
-        PaymentTransaction.order_code == order_code
+        PaymentTransaction.order_code == order_code,
+        PaymentTransaction.user_id == current_user.id
     ).first()
 
     if not transaction:
@@ -116,46 +106,6 @@ def check_payment_status(
         "is_paid": transaction.status == "completed"
     }
 
-@router.post("/simulate-success/{order_code}")
-def simulate_payment_success(
-    order_code: str,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user)
-):
-    """
-    Che do Test Mode / Giả lập thanh toán SePay thành công tức thì
-    để giảng viên và học viên kiểm thử không cần chuyển khoản tiền thật.
-    """
-    transaction = db.query(PaymentTransaction).filter(
-        PaymentTransaction.order_code == order_code
-    ).first()
-
-    if not transaction:
-        raise HTTPException(status_code=404, detail="Không tìm thấy giao dịch")
-
-    # Kich hoat VIP cho User
-    plan = PLANS_CONFIG.get(transaction.plan_type, {"days": 30})
-    user = db.query(User).filter(User.id == transaction.user_id).first()
-    if not user:
-        user = db.query(User).first()
-
-    if user:
-        user.is_vip = 1
-        user.vip_expiry = datetime.datetime.now() + datetime.timedelta(days=plan["days"])
-
-    transaction.status = "completed"
-    transaction.paid_at = datetime.datetime.now()
-
-    transaction.sepay_transaction_id = f"SIM_{random.randint(100000, 999999)}"
-    db.commit()
-
-    return {
-        "message": "Thanh toán thành công! Tài khoản của bạn đã được nâng cấp lên VIP Travel Pro.",
-        "order_code": transaction.order_code,
-        "status": "completed",
-        "is_vip": 1,
-        "vip_expiry": user.vip_expiry if user else None
-    }
 
 @router.post("/webhook")
 async def sepay_webhook(request: Request, db: Session = Depends(get_db)):

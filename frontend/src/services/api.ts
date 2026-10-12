@@ -141,11 +141,8 @@ export const paymentAPI = {
     const res = await api.get(`/payments/check-status/${orderCode}`);
     return res.data;
   },
-  simulateSuccess: async (orderCode: string) => {
-    const res = await api.post(`/payments/simulate-success/${orderCode}`);
-    return res.data;
-  },
 };
 
 export default api;
+
 

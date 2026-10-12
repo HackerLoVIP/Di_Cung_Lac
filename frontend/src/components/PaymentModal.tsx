@@ -74,14 +74,23 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   if (!isOpen) return null;
 
   const handleCreateOrder = async (planType: string) => {
+    if (!user) {
+      toast.error('Vui lòng đăng nhập tài khoản trước khi thanh toán và nâng cấp gói VIP!', {
+        icon: '🔒',
+        duration: 4000
+      });
+      return;
+    }
+
     setSelectedPlan(planType);
     setLoading(true);
     try {
       const data = await paymentAPI.createOrder(planType);
       setOrder(data);
-      toast.success('Đã tạo mã QR thanh toán SePay');
+      toast.success('Đã tạo mã QR thanh toán SePay thành công!');
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Không thể tạo đơn hàng thanh toán');
+      const msg = err?.response?.data?.detail || 'Không thể tạo đơn hàng thanh toán';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -94,24 +103,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handleSimulate = async () => {
-    if (!order) return;
-    setSimulating(true);
-    try {
-      const res = await paymentAPI.simulateSuccess(order.order_code);
-      toast.success(res.message || 'Thanh toán thành công (Chế độ Test)!');
-      setOrder((prev) => (prev ? { ...prev, status: 'completed' } : null));
-      if (onSuccess) onSuccess();
-    } catch {
-      toast.error('Lỗi khi giả lập thanh toán');
-    } finally {
-      setSimulating(false);
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-amber-200/80 space-y-5 max-h-[95vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-amber-200/80 space-y-5 my-auto max-h-[90vh] overflow-y-auto">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-amber-100 pb-3.5">
           <div className="flex items-center gap-2.5">
@@ -130,6 +124,21 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             ✕
           </button>
         </div>
+
+        {/* Canh bao neu chua dang nhap */}
+        {!user && (
+          <div className="bg-amber-50 border border-amber-300 p-3 rounded-2xl flex items-center justify-between gap-3 text-xs">
+            <div className="text-amber-900 font-medium">
+              ⚠️ Bạn chưa đăng nhập. Vui lòng đăng nhập để hệ thống kích hoạt VIP cho tài khoản của bạn.
+            </div>
+            <a
+              href="/login"
+              className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-2xs"
+            >
+              Đăng nhập
+            </a>
+          </div>
+        )}
 
         {/* Step 1: Chon goi nang cap (khi chua tao order) */}
         {!order && (
@@ -301,21 +310,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
 
             <p className="text-[11px] text-slate-400 italic text-center">
-              * Quét mã QR bằng ứng dụng ngân hàng bất kỳ (MB, VCB, Momo, Techcombank...). Tiền vào SePay sẽ tự động kích hoạt VIP trong 5-10 giây!
+              * Mở ứng dụng ngân hàng của bạn (MBBank, Vietcombank, Techcombank, Momo...) và quét mã QR trên để chuyển khoản. Khi tiền vào SePay, hệ thống tự động kích hoạt VIP trong 3 - 5 giây!
             </p>
-
-            {/* Nút Test Mode cho Thuyet trinh / Bao cao do an */}
-            <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
-              <button
-                onClick={handleSimulate}
-                disabled={simulating}
-                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
-                title="Bấm để kích hoạt thanh toán thành công ngay lập tức phục vụ demo"
-              >
-                <FaFlask className="text-amber-400" />
-                {simulating ? 'Đang kích hoạt...' : 'Chế độ Demo (Giả lập thanh toán thành công)'}
-              </button>
-            </div>
           </div>
         )}
 
@@ -343,3 +339,4 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     </div>
   );
 };
+
