@@ -48,6 +48,8 @@ export const PlanTrip: React.FC = () => {
   const numDays = Number(searchParams.get('days')) || 2;
   const numNights = Number(searchParams.get('nights')) || 1;
   const prompt = searchParams.get('prompt') || '';
+  const startDateStr = searchParams.get('startDate') || '';
+  const endDateStr = searchParams.get('endDate') || '';
 
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [weather, setWeather] = useState<{
@@ -385,9 +387,14 @@ export const PlanTrip: React.FC = () => {
               </button>
             </div>
 
-            <div className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
-              <FaCalendarAlt className="text-amber-500 text-xs" />
-              <span>{itinerary.num_days}N{itinerary.num_nights}Đ</span>
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+              <FaCalendarAlt className="text-amber-500 text-xs shrink-0" />
+              <span>
+                {startDateStr && endDateStr
+                  ? `${new Date(startDateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} - ${new Date(endDateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} • `
+                  : ''}
+                {itinerary.num_days}N{itinerary.num_nights}Đ
+              </span>
             </div>
           </div>
 
@@ -490,24 +497,37 @@ export const PlanTrip: React.FC = () => {
 
           {/* Days Switcher Tabs (Alternative Routes style) */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            {itinerary.days.map((day) => (
-              <button
-                key={day.day_number}
-                type="button"
-                onClick={() => {
-                  setSelectedDay(day.day_number);
-                  setActiveLocationId(null);
-                }}
-                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer ${
-                  selectedDay === day.day_number
-                    ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102 ring-2 ring-amber-300'
-                    : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border border-slate-200/80'
-                }`}
-              >
-                <span>Ngày {day.day_number}</span>
-                <span className="text-[10px] opacity-75">({day.items.length})</span>
-              </button>
-            ))}
+            {itinerary.days.map((day) => {
+              let dayDateLabel = '';
+              if (startDateStr) {
+                try {
+                  const d = new Date(startDateStr);
+                  d.setDate(d.getDate() + (day.day_number - 1));
+                  dayDateLabel = `${d.getDate()}/${d.getMonth() + 1}`;
+                } catch {
+                  dayDateLabel = '';
+                }
+              }
+
+              return (
+                <button
+                  key={day.day_number}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDay(day.day_number);
+                    setActiveLocationId(null);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+                    selectedDay === day.day_number
+                      ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102 ring-2 ring-amber-300'
+                      : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border border-slate-200/80'
+                  }`}
+                >
+                  <span>Ngày {day.day_number}{dayDateLabel ? ` (${dayDateLabel})` : ''}</span>
+                  <span className="text-[10px] opacity-75">({day.items.length})</span>
+                </button>
+              );
+            })}
             <button
               type="button"
               onClick={() => {

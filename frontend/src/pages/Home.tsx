@@ -2,17 +2,79 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { provinceAPI } from '../services/api';
 import { Province } from '../types';
-import { FaMapMarkerAlt, FaCalendarAlt, FaMagic, FaCheckCircle, FaStar, FaCrosshairs, FaCompass } from 'react-icons/fa';
+import {
+  FaMapMarkerAlt,
+  FaCalendarAlt,
+  FaMagic,
+  FaCrosshairs,
+  FaExchangeAlt,
+  FaMotorcycle,
+  FaCar,
+  FaBus,
+  FaPlane,
+  FaUsers,
+  FaCoins,
+  FaUtensils,
+  FaUmbrellaBeach,
+  FaCamera,
+  FaSlidersH,
+  FaChevronDown,
+  FaChevronUp,
+  FaSpinner,
+  FaCompass
+} from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 export const Home: React.FC = () => {
+  const navigate = useNavigate();
   const [provinces, setProvinces] = useState<Province[]>([]);
+  
+  // Destination & Departure State
   const [destination, setDestination] = useState<string>('Tây Ninh');
   const [startLocation, setStartLocation] = useState<string>('TP. Hồ Chí Minh');
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+
+  // Date management: Departure & Return dates
+  const formatDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const getUpcomingWeekend = () => {
+    const today = new Date();
+    const day = today.getDay();
+    const diffToSat = (6 - day + 7) % 7 || 7;
+    const sat = new Date(today);
+    sat.setDate(today.getDate() + diffToSat);
+    const sun = new Date(sat);
+    sun.setDate(sat.getDate() + 1);
+    return { start: formatDate(sat), end: formatDate(sun) };
+  };
+
+  const initialDates = getUpcomingWeekend();
+  const [startDate, setStartDate] = useState<string>(initialDates.start);
+  const [endDate, setEndDate] = useState<string>(initialDates.end);
   const [numDays, setNumDays] = useState<number>(2);
   const [numNights, setNumNights] = useState<number>(1);
-  const [prompt, setPrompt] = useState<string>('');
-  const navigate = useNavigate();
+
+  // Travel Preferences & Customization
+  const [showPreferences, setShowPreferences] = useState<boolean>(false);
+  const [travelStyle, setTravelStyle] = useState<string>('adventure');
+  const [groupType, setGroupType] = useState<string>('couple');
+  const [budgetLevel, setBudgetLevel] = useState<string>('standard');
+  const [preferredVehicle, setPreferredVehicle] = useState<string>('motorcycle');
+  const [customPrompt, setCustomPrompt] = useState<string>('');
+
+  const quickStartCities = [
+    'TP. Hồ Chí Minh',
+    'Hà Nội',
+    'Đà Nẵng',
+    'Cần Thơ',
+    'Bình Dương',
+    'Hải Phòng'
+  ];
 
   const quickDestinations = [
     { name: 'Tây Ninh', tag: '⛰️ Nóc nhà Nam Bộ' },
@@ -30,20 +92,98 @@ export const Home: React.FC = () => {
     }).catch(console.error);
   }, []);
 
-  const handleGetCurrentLocation = () => {
-    if (navigator.geolocation) {
-      toast('Đang xác định vị trí của bạn...', { icon: '📍' });
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setStartLocation(`Vị trí của tôi (${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)})`);
-          toast.success('Đã cập nhật vị trí xuất phát!');
-        },
-        () => {
-          setStartLocation('TP. Hồ Chí Minh');
-          toast.error('Không thể truy cập GPS, đặt mặc định TP. Hồ Chí Minh');
-        }
-      );
+  // Recalculate days and nights when dates change
+  useEffect(() => {
+    if (!startDate || !endDate) return;
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    const diffTime = e.getTime() - s.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    const validDays = Math.max(1, diffDays);
+    setNumDays(validDays);
+    setNumNights(Math.max(0, validDays - 1));
+  }, [startDate, endDate]);
+
+  // Set quick date preset
+  const applyDatePreset = (preset: 'weekend' | '3d2n' | '4d3n') => {
+    const today = new Date();
+    if (preset === 'weekend') {
+      const dates = getUpcomingWeekend();
+      setStartDate(dates.start);
+      setEndDate(dates.end);
+    } else if (preset === '3d2n') {
+      const s = new Date(today);
+      s.setDate(today.getDate() + 3);
+      const e = new Date(s);
+      e.setDate(s.getDate() + 2);
+      setStartDate(formatDate(s));
+      setEndDate(formatDate(e));
+    } else if (preset === '4d3n') {
+      const s = new Date(today);
+      s.setDate(today.getDate() + 5);
+      const e = new Date(s);
+      e.setDate(s.getDate() + 3);
+      setStartDate(formatDate(s));
+      setEndDate(formatDate(e));
     }
+  };
+
+  // GPS Geolocation with Reverse Geocoding
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Trình duyệt của bạn không hỗ trợ định vị GPS');
+      return;
+    }
+    setIsLocating(true);
+    toast('Đang dò tìm vị trí GPS của bạn...', { icon: '📍' });
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address;
+            const detectedCity = addr?.city || addr?.state || addr?.county || addr?.province;
+            if (detectedCity) {
+              setStartLocation(detectedCity);
+              toast.success(`Đã xác định vị trí hiện tại: ${detectedCity}!`);
+              setIsLocating(false);
+              return;
+            }
+          }
+        } catch {
+          // fallback
+        }
+
+        // Heuristic fallback
+        if (latitude >= 10.0 && latitude <= 11.5 && longitude >= 106.0 && longitude <= 107.5) {
+          setStartLocation('TP. Hồ Chí Minh');
+        } else if (latitude >= 20.5 && latitude <= 21.5) {
+          setStartLocation('Hà Nội');
+        } else if (latitude >= 15.5 && latitude <= 16.5) {
+          setStartLocation('Đà Nẵng');
+        } else {
+          setStartLocation('TP. Hồ Chí Minh');
+        }
+        toast.success('Đã cập nhật vị trí xuất phát!');
+        setIsLocating(false);
+      },
+      () => {
+        setIsLocating(false);
+        setStartLocation('TP. Hồ Chí Minh');
+        toast.error('Không thể truy cập GPS, đặt vị trí mặc định TP. Hồ Chí Minh');
+      },
+      { timeout: 7000 }
+    );
+  };
+
+  // Swap start & destination
+  const handleSwap = () => {
+    const temp = destination;
+    setDestination(startLocation);
+    setStartLocation(temp);
   };
 
   const handleGenerate = (e: React.FormEvent) => {
@@ -53,14 +193,62 @@ export const Home: React.FC = () => {
       toast.error('Vui lòng nhập điểm đến bạn muốn đi!');
       return;
     }
-    navigate(`/plan?destination=${encodeURIComponent(dest)}&start=${encodeURIComponent(startLocation)}&days=${numDays}&nights=${numNights}&prompt=${encodeURIComponent(prompt)}`);
+
+    // Build composed prompt
+    const styleMap: Record<string, string> = {
+      relax: 'Phong cách nghỉ dưỡng, thư thái, cảnh đẹp yên bình',
+      adventure: 'Phong cách phượt, khám phá thiên nhiên và các cung đường đẹp',
+      foodie: 'Tour ẩm thực chuyên sâu, thưởng thức nhiều món đặc sản nổi tiếng',
+      photo: 'Check-in sống ảo, nhiều góc chụp ảnh đẹp',
+      family: 'Du lịch gia đình, an toàn, thoải mái và nhiều trải nghiệm gắn kết'
+    };
+
+    const groupMap: Record<string, string> = {
+      solo: 'Đi 1 mình (Solo backpacker)',
+      couple: 'Cặp đôi (Lãng mạn, chill)',
+      friends: 'Nhóm bạn thân 3-5 người năng động',
+      family: 'Gia đình có trẻ nhỏ/người lớn tuổi'
+    };
+
+    const budgetMap: Record<string, string> = {
+      budget: 'Ngân sách tiết kiệm tối ưu chi phí (< 1.5tr/người)',
+      standard: 'Ngân sách tiêu chuẩn vừa phải (1.5tr - 3tr/người)',
+      luxury: 'Ngân sách thoải mái, trải nghiệm dịch vụ cao cấp (> 3tr/người)'
+    };
+
+    const vehicleMap: Record<string, string> = {
+      motorcycle: 'Đi bằng xe máy',
+      car: 'Đi bằng ô tô riêng/tự lái',
+      bus: 'Đi bằng xe khách/Limousine',
+      plane: 'Đi bằng máy bay'
+    };
+
+    const fullPrompt = [
+      styleMap[travelStyle] || '',
+      groupMap[groupType] || '',
+      budgetMap[budgetLevel] || '',
+      vehicleMap[preferredVehicle] || '',
+      customPrompt.trim()
+    ].filter(Boolean).join('. ');
+
+    const params = new URLSearchParams({
+      destination: dest,
+      start: startLocation,
+      startDate: startDate,
+      endDate: endDate,
+      days: String(numDays),
+      nights: String(numNights),
+      prompt: fullPrompt
+    });
+
+    navigate(`/plan?${params.toString()}`);
   };
 
   return (
     <div className="space-y-16 pb-16">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-amber-50/70 via-[#faf9f5] to-[#faf9f5] pt-14 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center space-y-5">
+      <section className="relative overflow-hidden bg-gradient-to-b from-amber-50/70 via-[#faf9f5] to-[#faf9f5] pt-12 pb-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 pastel-yellow-badge text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full shadow-2xs">
             <span>✨ Trợ lý AI Du Lịch Thông Minh</span>
             <span className="opacity-40">•</span>
@@ -70,111 +258,315 @@ export const Home: React.FC = () => {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">
             Lên kế hoạch du lịch <br />
             <span className="bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600 bg-clip-text text-transparent">
-              Mọi Nẻo Đường Việt Nam
+              Chuẩn Xác Từng Điểm Đến
             </span>
           </h1>
 
           <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto font-normal">
-            Nhập bất kỳ điểm đến nào (Tây Ninh, Vũng Tàu, Đà Lạt, quê bạn,...), AI tự động đề xuất lộ trình tối ưu Google Maps kèm bóc tách dự toán chi phí thực tế.
+            Nhận diện vị trí hiện tại, chọn ngày đi ngày về cụ thể, tuỳ chọn phong cách & ngân sách. AI sẽ tự động phân tích và tạo lịch trình Google Maps tối ưu 100% dữ liệu thật.
           </p>
 
-          {/* Modern Floating Pill Search Bar (Airbnb / Traveloka Style) */}
-          <div className="mt-8 max-w-4xl mx-auto">
-            <form 
-              onSubmit={handleGenerate} 
-              className="bg-white/95 backdrop-blur-md p-3 sm:p-4 rounded-3xl sm:rounded-full shadow-xl border-2 border-amber-200/90 hover:border-amber-300 transition-all flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3"
-            >
-              {/* Segment 1: Điểm đến */}
-              <div className="flex-1 px-4 py-2 hover:bg-amber-50/50 rounded-2xl sm:rounded-full transition text-left relative">
-                <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
-                  <FaMapMarkerAlt className="text-amber-500" /> Điểm đến
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  placeholder="Bạn muốn đi đâu? (Tây Ninh, Đà Lạt...)"
-                  className="w-full bg-transparent border-none text-slate-800 font-black text-sm focus:outline-none placeholder:text-slate-400 p-0 mt-0.5"
-                />
+          {/* Master Travel Booking Hub Form */}
+          <div className="mt-8 max-w-3xl mx-auto bg-white rounded-3xl shadow-xl border-2 border-amber-200/90 p-5 sm:p-7 text-left space-y-5">
+            <form onSubmit={handleGenerate} className="space-y-5">
+              {/* Dòng 1: Điểm đi (Xuất phát) & Điểm đến (Có nút Đổi chiều Swap) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative">
+                {/* Điểm xuất phát */}
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 hover:border-amber-300 transition space-y-1 relative">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <FaCrosshairs className="text-blue-500 text-xs" />
+                      <span>Hiện tại bạn ở đâu? (Điểm đi)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleGetCurrentLocation}
+                      disabled={isLocating}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md flex items-center gap-1 transition cursor-pointer"
+                      title="Tự động nhận diện toạ độ hiện tại của bạn"
+                    >
+                      {isLocating ? <FaSpinner className="animate-spin text-xs" /> : <span>📍 GPS của tôi</span>}
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={startLocation}
+                    onChange={(e) => setStartLocation(e.target.value)}
+                    placeholder="Nhập nơi bạn đang ở (TP. Hồ Chí Minh, Hà Nội...)"
+                    className="w-full bg-transparent font-black text-slate-900 text-sm sm:text-base focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
+                  />
+                  {/* Quick starting city suggestions */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pt-1 scrollbar-none">
+                    <span className="text-[10px] text-slate-400">Gợi ý:</span>
+                    {quickStartCities.slice(0, 4).map((city) => (
+                      <button
+                        key={city}
+                        type="button"
+                        onClick={() => setStartLocation(city)}
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition cursor-pointer whitespace-nowrap ${
+                          startLocation === city
+                            ? 'bg-blue-100 text-blue-900 font-bold'
+                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
+                        }`}
+                      >
+                        {city}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Nút Hoán Đổi Chiều (Swap ⇄) trên Desktop */}
+                <button
+                  type="button"
+                  onClick={handleSwap}
+                  className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-slate-500 hover:text-amber-900 border border-slate-200 shadow-md items-center justify-center cursor-pointer transition"
+                  title="Đổi chiều điểm đi và điểm đến"
+                >
+                  <FaExchangeAlt className="text-xs" />
+                </button>
+
+                {/* Điểm đến */}
+                <div className="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/80 hover:border-amber-300 transition space-y-1">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                    <FaMapMarkerAlt className="text-red-500 text-xs" />
+                    <span>Bạn muốn đi du lịch ở đâu? (Điểm đến)</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    placeholder="Nhập bất kỳ điểm đến nào (Tây Ninh, Vũng Tàu, Đà Lạt...)"
+                    className="w-full bg-transparent font-black text-slate-900 text-sm sm:text-base focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
+                  />
+                  {/* Quick destination suggestion chips */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pt-1 scrollbar-none">
+                    <span className="text-[10px] text-amber-800/60">Hot:</span>
+                    {quickDestinations.slice(0, 4).map((d) => (
+                      <button
+                        key={d.name}
+                        type="button"
+                        onClick={() => setDestination(d.name)}
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition cursor-pointer whitespace-nowrap ${
+                          destination === d.name
+                            ? 'bg-amber-400 text-amber-950 font-bold'
+                            : 'bg-white text-slate-600 hover:bg-amber-100 border border-amber-200/60'
+                        }`}
+                      >
+                        {d.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              <div className="hidden sm:block w-px h-8 bg-slate-200" />
+              {/* Dòng 2: Ngày đi & Ngày về Cụ Thể (Calendar Date Picker & Thời gian chuyến đi) */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">
+                      <FaCalendarAlt />
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Thời gian khởi hành & trở về</h4>
+                      <p className="text-[11px] text-slate-400">Chọn ngày cụ thể để AI tính toán thời tiết và lịch trình chính xác</p>
+                    </div>
+                  </div>
 
-              {/* Segment 2: Điểm xuất phát */}
-              <div className="flex-1 px-4 py-2 hover:bg-amber-50/50 rounded-2xl sm:rounded-full transition text-left relative">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
-                    <FaCrosshairs className="text-blue-500" /> Điểm đi
-                  </label>
+                  {/* Summary Badge */}
+                  <div className="inline-flex items-center gap-2 pastel-yellow-badge px-3 py-1 rounded-xl text-xs font-black self-start sm:self-auto">
+                    <span>✨ {numDays} Ngày {numNights} Đêm</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Ngày bắt đầu */}
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      🛫 Ngày khởi hành (Đi)
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={startDate}
+                      min={formatDate(new Date())}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        if (e.target.value > endDate) {
+                          setEndDate(e.target.value);
+                        }
+                      }}
+                      className="w-full bg-transparent font-black text-slate-900 text-sm focus:outline-none cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Ngày kết thúc */}
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      🛬 Ngày trở về (Về)
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={endDate}
+                      min={startDate || formatDate(new Date())}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full bg-transparent font-black text-slate-900 text-sm focus:outline-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Date Presets */}
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                  <span className="text-[11px] text-slate-400 font-medium">Chọn nhanh:</span>
                   <button
                     type="button"
-                    onClick={handleGetCurrentLocation}
-                    className="text-[10px] text-blue-600 hover:underline font-bold cursor-pointer"
+                    onClick={() => applyDatePreset('weekend')}
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
                   >
-                    📍 GPS
+                    🌴 Cuối tuần này (T7 - CN)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyDatePreset('3d2n')}
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
+                  >
+                    🚀 3 Ngày 2 Đêm tuần sau
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyDatePreset('4d3n')}
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
+                  >
+                    🏖️ Kỳ nghỉ 4 Ngày 3 Đêm
                   </button>
                 </div>
-                <input
-                  type="text"
-                  value={startLocation}
-                  onChange={(e) => setStartLocation(e.target.value)}
-                  placeholder="TP. Hồ Chí Minh..."
-                  className="w-full bg-transparent border-none text-slate-800 font-bold text-sm focus:outline-none placeholder:text-slate-400 p-0 mt-0.5 truncate"
-                />
               </div>
 
-              <div className="hidden sm:block w-px h-8 bg-slate-200" />
-
-              {/* Segment 3: Thời gian */}
-              <div className="w-full sm:w-36 px-4 py-2 hover:bg-amber-50/50 rounded-2xl sm:rounded-full transition text-left">
-                <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
-                  <FaCalendarAlt className="text-emerald-500" /> Thời gian
-                </label>
-                <select
-                  value={numDays}
-                  onChange={(e) => {
-                    const d = Number(e.target.value);
-                    setNumDays(d);
-                    setNumNights(Math.max(0, d - 1));
-                  }}
-                  className="w-full bg-transparent border-none text-slate-800 font-bold text-sm focus:outline-none p-0 mt-0.5 cursor-pointer"
+              {/* Dòng 3: Tùy Chọn Chi Tiết (Phong cách, Thành viên, Ngân sách, Phương tiện) */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowPreferences(!showPreferences)}
+                  className="w-full p-3.5 bg-slate-50 hover:bg-amber-50/60 flex items-center justify-between transition cursor-pointer text-left"
                 >
-                  {[1, 2, 3, 4, 5, 7].map((d) => (
-                    <option key={d} value={d}>{d} ngày {Math.max(0, d - 1)} đêm</option>
-                  ))}
-                </select>
+                  <div className="flex items-center gap-2">
+                    <FaSlidersH className="text-amber-700 text-xs" />
+                    <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                      Tùy chọn phong cách, thành viên & ngân sách
+                    </span>
+                    <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-bold">
+                      Chi tiết hơn
+                    </span>
+                  </div>
+                  {showPreferences ? <FaChevronUp className="text-xs text-slate-400" /> : <FaChevronDown className="text-xs text-slate-400" />}
+                </button>
+
+                {showPreferences && (
+                  <div className="p-4 bg-white space-y-4 border-t border-slate-200 animate-fade-in text-xs">
+                    {/* Phong cách du lịch */}
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-700 block">🏖️ Phong cách chuyến đi:</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {[
+                          { id: 'adventure', label: 'Phượt khám phá', icon: '🏍️' },
+                          { id: 'relax', label: 'Nghỉ dưỡng & Chill', icon: '🏖️' },
+                          { id: 'foodie', label: 'Ăn sập đặc sản', icon: '🍜' },
+                          { id: 'photo', label: 'Sống ảo check-in', icon: '📸' },
+                          { id: 'family', label: 'Gia đình gắn kết', icon: '👨‍👩‍👧‍👦' },
+                        ].map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setTravelStyle(s.id)}
+                            className={`p-2 rounded-xl border text-center transition cursor-pointer ${
+                              travelStyle === s.id
+                                ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-2xs'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span className="block text-base mb-0.5">{s.icon}</span>
+                            <span className="text-[11px] block">{s.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Nhóm & Thành viên */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700 flex items-center gap-1">
+                          <FaUsers className="text-amber-600" /> Thành viên:
+                        </label>
+                        <select
+                          value={groupType}
+                          onChange={(e) => setGroupType(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="solo">🧍 Đi 1 mình (Solo)</option>
+                          <option value="couple">👫 Cặp đôi (2 người)</option>
+                          <option value="friends">👥 Nhóm bạn (3 - 5 người)</option>
+                          <option value="family">👨‍👩‍👧‍👦 Gia đình đông người</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700 flex items-center gap-1">
+                          <FaCoins className="text-amber-600" /> Mức ngân sách:
+                        </label>
+                        <select
+                          value={budgetLevel}
+                          onChange={(e) => setBudgetLevel(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="budget">💰 Tiết kiệm (&lt; 1.5tr/người)</option>
+                          <option value="standard">💳 Tiêu chuẩn (1.5 - 3tr/người)</option>
+                          <option value="luxury">⭐ Thoải mái (&gt; 3tr/người)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700 flex items-center gap-1">
+                          <FaMotorcycle className="text-amber-600" /> Phương tiện ưu tiên:
+                        </label>
+                        <select
+                          value={preferredVehicle}
+                          onChange={(e) => setPreferredVehicle(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="motorcycle">🏍️ Xe máy (Phượt)</option>
+                          <option value="car">🚗 Ô tô riêng / Thuê xe</option>
+                          <option value="bus">🚌 Xe khách / Limousine</option>
+                          <option value="plane">✈️ Máy bay</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Yêu cầu riêng cho AI */}
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 block">💡 Ghi chú hoặc sở thích riêng cho AI:</label>
+                      <input
+                        type="text"
+                        value={customPrompt}
+                        onChange={(e) => setCustomPrompt(e.target.value)}
+                        placeholder="Ví dụ: Thích ngắm hoàng hôn, ăn nhiều đồ nướng, muốn ghé chùa chiền..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Action Button: AI Generate */}
+              {/* Action Submit Button */}
               <button
                 type="submit"
-                className="pastel-yellow-btn px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl sm:rounded-full font-black text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0 hover:scale-105"
-                title="Khám phá và lập tour tự động"
+                className="w-full pastel-yellow-btn py-4 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-lg cursor-pointer hover:scale-[1.01] transition-transform"
               >
-                <FaMagic className="text-amber-900 text-base" />
-                <span>Lên lịch trình</span>
+                <FaMagic className="text-amber-950 text-lg" />
+                <span>Thiết kế Lịch Trình Chi Tiết Bằng AI</span>
               </button>
             </form>
-
-            {/* Quick chips pills underneath */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">Khám phá nhanh:</span>
-              {quickDestinations.map((item) => (
-                <button
-                  key={item.name}
-                  type="button"
-                  onClick={() => setDestination(item.name)}
-                  className={`text-xs px-3 py-1.5 rounded-full font-bold transition-all cursor-pointer shadow-2xs ${
-                    destination.toLowerCase() === item.name.toLowerCase()
-                      ? 'pastel-yellow-badge scale-105 border-amber-300'
-                      : 'bg-white hover:bg-amber-50/80 text-slate-600 border border-slate-200/90'
-                  }`}
-                >
-                  {item.tag || item.name}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </section>
