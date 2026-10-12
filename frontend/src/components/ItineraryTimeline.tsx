@@ -17,6 +17,7 @@ interface ItineraryTimelineProps {
   activeLocationId?: number | null;
   onSelectLocation?: (locationId: number) => void;
   onRemoveItem?: (dayNumber: number, itemId: number) => void;
+  compact?: boolean;
 }
 
 export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
@@ -25,6 +26,7 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
   activeLocationId,
   onSelectLocation,
   onRemoveItem,
+  compact = false,
 }) => {
   // Neu selectedDayNumber === 0, hien thi tat ca ngay, neu khong chi hien thi ngay duoc chon
   const displayDays =
@@ -33,19 +35,26 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
       : days.filter((d) => d.day_number === selectedDayNumber);
 
   return (
-    <div className="space-y-10">
+    <div className={compact ? 'space-y-6' : 'space-y-10'}>
       {displayDays.map((day) => (
-        <div key={day.day_number} className="pastel-card rounded-3xl p-6 sm:p-8 border border-amber-200/60 shadow-xs space-y-6">
+        <div
+          key={day.day_number}
+          className={
+            compact
+              ? 'bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-4'
+              : 'pastel-card rounded-3xl p-6 sm:p-8 border border-amber-200/60 shadow-xs space-y-6'
+          }
+        >
           {/* Header Ngay */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-amber-100 gap-3">
-            <div className="flex items-center gap-3">
-              <span className="w-11 h-11 rounded-2xl bg-amber-300 text-amber-950 font-black flex items-center justify-center text-lg shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-amber-100 gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-300 text-amber-950 font-black flex items-center justify-center text-base shadow-2xs">
                 {day.day_number}
               </span>
               <div>
-                <h3 className="font-extrabold text-xl text-slate-800">{day.title}</h3>
-                <p className="text-xs text-slate-400">
-                  {day.items.length} điểm dừng chân theo lộ trình Google Maps tối ưu
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-800">{day.title}</h3>
+                <p className="text-[11px] text-slate-400">
+                  {day.items.length} điểm dừng chân • Lộ trình tối ưu
                 </p>
               </div>
             </div>

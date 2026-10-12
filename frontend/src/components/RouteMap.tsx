@@ -20,6 +20,7 @@ interface RouteMapProps {
   dayNumber?: number;
   activeLocationId?: number | null;
   onSelectLocation?: (locationId: number) => void;
+  className?: string;
 }
 
 interface RouteSegment {
@@ -39,6 +40,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   dayNumber = 1,
   activeLocationId,
   onSelectLocation,
+  className,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -106,17 +108,27 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     }).addTo(map);
     activeTileLayerRef.current = tileLayer;
 
-    // Resize invalidateSize
+    // Resize invalidateSize & ResizeObserver
     setTimeout(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
       }
     }, 250);
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    });
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     // Ve Markers va Route
     renderRoute(map, userLocation);
 
     return () => {
+      resizeObserver.disconnect();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -394,8 +406,10 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
   return (
     <div
-      className={`relative bg-slate-900 rounded-3xl overflow-hidden shadow-xl border border-slate-700/60 transition-all z-0 ${
-        isFullscreen ? 'fixed inset-0 z-[80] rounded-none' : 'w-full h-[520px] sm:h-[580px]'
+      className={`relative bg-slate-900 overflow-hidden transition-all z-0 ${
+        isFullscreen
+          ? 'fixed inset-0 z-[80] rounded-none'
+          : className || 'w-full h-[520px] sm:h-[580px] rounded-3xl shadow-xl border border-slate-700/60'
       }`}
     >
       {/* Ban do Leaflet container */}
