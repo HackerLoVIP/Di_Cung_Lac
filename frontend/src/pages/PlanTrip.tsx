@@ -327,30 +327,30 @@ export const PlanTrip: React.FC = () => {
 
   return (
     <div className="h-[calc(100vh-64px)] w-full flex flex-col lg:flex-row overflow-hidden relative bg-slate-100">
-      {/* Google Maps Styled Left Panel (Navigation Search & Turn-by-Turn Timeline) */}
+      {/* Google Maps Styled Left Panel (Navigation Search & Turn-by-Turn Timeline - Unified Single Scroll) */}
       <div
-        className={`w-full lg:w-[480px] xl:w-[520px] 2xl:w-[560px] h-full flex flex-col bg-white border-r border-slate-200/90 shadow-2xl z-20 transition-all duration-300 relative shrink-0 ${
-          isSidebarCollapsed ? 'lg:-ml-[480px] xl:-ml-[520px] 2xl:-ml-[560px]' : ''
-        } ${mobileTab === 'map' ? 'hidden lg:flex' : 'flex'}`}
+        className={`w-full lg:w-[390px] xl:w-[415px] 2xl:w-[435px] h-full overflow-y-auto bg-white border-r border-slate-200 shadow-xl z-20 transition-all duration-300 relative shrink-0 scrollbar-thin ${
+          isSidebarCollapsed ? 'lg:-ml-[390px] xl:-ml-[415px] 2xl:-ml-[435px]' : ''
+        } ${mobileTab === 'map' ? 'hidden lg:block' : 'block'}`}
       >
         {/* Sidebar Toggle Chevron Pill for Desktop (Google Maps style) */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="hidden lg:flex absolute top-20 -right-4 z-30 bg-white hover:bg-amber-100 text-slate-700 hover:text-amber-950 border border-slate-200 shadow-md rounded-r-xl w-4 h-16 items-center justify-center cursor-pointer transition text-xs"
+          className="hidden lg:flex absolute top-16 -right-4 z-30 bg-white hover:bg-amber-100 text-slate-700 hover:text-amber-950 border border-slate-200 shadow-md rounded-r-xl w-4 h-14 items-center justify-center cursor-pointer transition text-xs"
           title={isSidebarCollapsed ? 'Mở thanh lộ trình' : 'Thu gọn thanh lộ trình'}
         >
           {isSidebarCollapsed ? <FaChevronRight className="text-[10px]" /> : <FaChevronLeft className="text-[10px]" />}
         </button>
 
-        {/* Top Google Maps Direction Header Box */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 bg-white space-y-3 shrink-0">
+        {/* Unified Content Stream: Direction, Controls & Timeline */}
+        <div className="p-3.5 sm:p-4 space-y-3">
           {/* Mode Selector (Xe máy / Ô tô / Đi bộ) */}
           <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 type="button"
                 onClick={() => setTransitMode('motorcycle')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
                   transitMode === 'motorcycle'
                     ? 'bg-amber-300 text-amber-950 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -362,7 +362,7 @@ export const PlanTrip: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setTransitMode('car')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   transitMode === 'car'
                     ? 'bg-amber-300 text-amber-950 shadow-xs font-black'
                     : 'text-slate-500 hover:text-slate-800'
@@ -374,7 +374,7 @@ export const PlanTrip: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setTransitMode('walking')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   transitMode === 'walking'
                     ? 'bg-amber-300 text-amber-950 shadow-xs font-black'
                     : 'text-slate-500 hover:text-slate-800'
@@ -386,35 +386,35 @@ export const PlanTrip: React.FC = () => {
             </div>
 
             <div className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
-              <FaCalendarAlt className="text-amber-500" />
+              <FaCalendarAlt className="text-amber-500 text-xs" />
               <span>{itinerary.num_days}N{itinerary.num_nights}Đ</span>
             </div>
           </div>
 
           {/* Direction Inputs Card (Origin & Destination with connecting line) */}
-          <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-2">
+          <div className="relative bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 space-y-1.5">
             {/* Connecting Vertical Dotted Line */}
-            <div className="absolute left-[23px] top-[26px] bottom-[26px] w-0.5 border-l-2 border-dashed border-slate-300 pointer-events-none" />
+            <div className="absolute left-[21px] top-[22px] bottom-[22px] w-0.5 border-l-2 border-dashed border-slate-300 pointer-events-none" />
 
             {/* Origin Row */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center shrink-0 z-10">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 ring-2 ring-white" />
+                <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
               </div>
-              <div className="flex-1 bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 truncate shadow-2xs">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase leading-none mb-0.5">Xuất phát</span>
-                <span className="font-bold text-slate-900">{isSwappedOrigin ? itinerary.province.name : (startLocation || 'TP. Hồ Chí Minh')}</span>
+              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 truncate shadow-2xs">
+                <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-0.5">Xuất phát</span>
+                <span className="font-bold text-slate-900 truncate block">{isSwappedOrigin ? itinerary.province.name : (startLocation || 'TP. Hồ Chí Minh')}</span>
               </div>
             </div>
 
             {/* Destination Row */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-600 flex items-center justify-center shrink-0 z-10">
                 <FaMapMarkerAlt className="text-red-600 text-xs" />
               </div>
-              <div className="flex-1 bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 truncate shadow-2xs">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase leading-none mb-0.5">Điểm đến</span>
-                <span className="font-bold text-slate-900">{isSwappedOrigin ? (startLocation || 'TP. Hồ Chí Minh') : itinerary.province.name}</span>
+              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 truncate shadow-2xs">
+                <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-0.5">Điểm đến</span>
+                <span className="font-bold text-slate-900 truncate block">{isSwappedOrigin ? (startLocation || 'TP. Hồ Chí Minh') : itinerary.province.name}</span>
               </div>
             </div>
 
@@ -422,19 +422,19 @@ export const PlanTrip: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsSwappedOrigin(!isSwappedOrigin)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white hover:bg-amber-50 text-slate-500 hover:text-amber-800 border border-slate-200 shadow-xs flex items-center justify-center cursor-pointer transition"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white hover:bg-amber-50 text-slate-500 hover:text-amber-800 border border-slate-200 shadow-xs flex items-center justify-center cursor-pointer transition"
               title="Đổi chiều xuất phát và điểm đến"
             >
-              <FaExchangeAlt className="rotate-90 text-xs" />
+              <FaExchangeAlt className="rotate-90 text-[10px]" />
             </button>
           </div>
 
           {/* Google Maps Discovery Quick Category Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-xs">
             <button
               type="button"
               onClick={() => setSelectedCategoryFilter(null)}
-              className={`px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
+              className={`px-2 py-1 rounded-lg font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
                 selectedCategoryFilter === null
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -445,51 +445,51 @@ export const PlanTrip: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === 'restaurant' ? null : 'restaurant')}
-              className={`px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
+              className={`px-2 py-1 rounded-lg font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
                 selectedCategoryFilter === 'restaurant'
                   ? 'bg-amber-400 text-amber-950 font-black shadow-xs'
                   : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/60'
               }`}
             >
-              <FaUtensils className="text-amber-600 text-[11px]" /> Quán ăn
+              <FaUtensils className="text-amber-600 text-[10px]" /> Quán ăn
             </button>
             <button
               type="button"
               onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === 'cafe' ? null : 'cafe')}
-              className={`px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
+              className={`px-2 py-1 rounded-lg font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
                 selectedCategoryFilter === 'cafe'
                   ? 'bg-amber-400 text-amber-950 font-black shadow-xs'
                   : 'bg-orange-50 hover:bg-orange-100 text-orange-900 border border-orange-200/60'
               }`}
             >
-              <FaCoffee className="text-orange-600 text-[11px]" /> Cà phê
+              <FaCoffee className="text-orange-600 text-[10px]" /> Cà phê
             </button>
             <button
               type="button"
               onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === 'tourist_spot' ? null : 'tourist_spot')}
-              className={`px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
+              className={`px-2 py-1 rounded-lg font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
                 selectedCategoryFilter === 'tourist_spot'
                   ? 'bg-amber-400 text-amber-950 font-black shadow-xs'
                   : 'bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200/60'
               }`}
             >
-              <FaCamera className="text-blue-600 text-[11px]" /> Check-in
+              <FaCamera className="text-blue-600 text-[10px]" /> Check-in
             </button>
             <button
               type="button"
               onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === 'hotel' ? null : 'hotel')}
-              className={`px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
+              className={`px-2 py-1 rounded-lg font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition ${
                 selectedCategoryFilter === 'hotel'
                   ? 'bg-amber-400 text-amber-950 font-black shadow-xs'
                   : 'bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200/60'
               }`}
             >
-              <FaHotel className="text-purple-600 text-[11px]" /> Khách sạn
+              <FaHotel className="text-purple-600 text-[10px]" /> Khách sạn
             </button>
           </div>
 
           {/* Days Switcher Tabs (Alternative Routes style) */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
             {itinerary.days.map((day) => (
               <button
                 key={day.day_number}
@@ -498,7 +498,7 @@ export const PlanTrip: React.FC = () => {
                   setSelectedDay(day.day_number);
                   setActiveLocationId(null);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer ${
                   selectedDay === day.day_number
                     ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102 ring-2 ring-amber-300'
                     : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border border-slate-200/80'
@@ -514,7 +514,7 @@ export const PlanTrip: React.FC = () => {
                 setSelectedDay(0);
                 setActiveLocationId(null);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 selectedDay === 0
                   ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102 ring-2 ring-amber-300'
                   : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border border-slate-200/80'
@@ -525,74 +525,71 @@ export const PlanTrip: React.FC = () => {
           </div>
 
           {/* Weather & Budget Quick Strip */}
-          <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+          <div className="flex items-center justify-between gap-2 text-xs">
             {weather ? (
-              <div className="flex items-center gap-2 bg-amber-50/90 border border-amber-200/80 px-2.5 py-1.5 rounded-xl">
-                <span className="text-base">{weather.icon || '☀️'}</span>
+              <div className="flex items-center gap-1.5 bg-amber-50/90 border border-amber-200/80 px-2 py-1 rounded-xl">
+                <span className="text-sm">{weather.icon || '☀️'}</span>
                 <div>
-                  <span className="font-black text-slate-800 mr-1.5">{weather.temp}</span>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded uppercase">Live Meteo</span>
+                  <span className="font-black text-slate-800 text-xs mr-1">{weather.temp}</span>
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded uppercase">Live</span>
                 </div>
               </div>
             ) : (
-              <span className="text-[11px] text-slate-400">☀️ Đang tải thời tiết...</span>
+              <span className="text-[10px] text-slate-400">☀️ Đang tải thời tiết...</span>
             )}
 
             {/* Budget & Sổ chi tiêu button */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowCostModal(true)}
-                className="pastel-yellow-badge hover:bg-amber-300 text-amber-950 font-black px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer"
-                title="Mở Sổ Tay Chi Tiêu & Dự Toán"
-              >
-                <FaMoneyBillWave className="text-amber-700" />
-                <span>{itinerary.total_cost.toLocaleString('vi-VN')} đ</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowCostModal(true)}
+              className="pastel-yellow-badge hover:bg-amber-300 text-amber-950 font-black px-2.5 py-1 rounded-xl text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer"
+              title="Mở Sổ Tay Chi Tiêu & Dự Toán"
+            >
+              <FaMoneyBillWave className="text-amber-700 text-xs" />
+              <span>{itinerary.total_cost.toLocaleString('vi-VN')} đ</span>
+            </button>
           </div>
 
           {/* Quick Action Toolbar */}
-          <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-slate-100">
+          <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-slate-100">
             <button
               type="button"
               onClick={() => window.print()}
-              className="flex-1 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] transition flex items-center justify-center gap-1 cursor-pointer"
+              className="flex-1 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] transition flex items-center justify-center gap-1 cursor-pointer"
               title="In hoặc xuất PDF"
             >
-              <FaPrint className="text-xs" /> In / PDF
+              <FaPrint className="text-[10px]" /> In / PDF
             </button>
             <button
               type="button"
               onClick={handleShare}
-              className="flex-1 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] transition flex items-center justify-center gap-1 cursor-pointer"
+              className="flex-1 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] transition flex items-center justify-center gap-1 cursor-pointer"
             >
-              <FaShareAlt className="text-xs" /> Chia sẻ
+              <FaShareAlt className="text-[10px]" /> Chia sẻ
             </button>
             <button
               type="button"
               onClick={handleSaveTrip}
               disabled={saving}
-              className="flex-1 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-[11px] transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 shadow-xs"
+              className="flex-1 py-1 rounded-lg bg-slate-900 hover:bg-black text-white font-black text-[10px] transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 shadow-xs"
             >
-              <FaBookmark className="text-amber-400 text-xs" /> {saving ? 'Đang lưu...' : 'Lưu lại'}
+              <FaBookmark className="text-amber-400 text-[10px]" /> {saving ? 'Đang lưu...' : 'Lưu lại'}
             </button>
           </div>
-        </div>
 
-        {/* Scrollable Turn-by-Turn Itinerary Timeline List */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 scrollbar-thin bg-slate-50/50">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+          {/* Turn-by-Turn Itinerary Timeline Header */}
+          <div className="flex items-center justify-between pt-2 px-0.5 border-t border-slate-100">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
               {selectedDay === 0 ? 'Toàn bộ lộ trình' : `Chi tiết Ngày ${selectedDay}`}
             </span>
-            <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md">
+            <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md">
               {selectedDay === 0
                 ? `${itinerary.days.reduce((acc, d) => acc + d.items.length, 0)} điểm dừng`
                 : `${itinerary.days.find((d) => d.day_number === selectedDay)?.items.length || 0} điểm dừng`}
             </span>
           </div>
 
+          {/* Stops Timeline */}
           <ItineraryTimeline
             days={itinerary.days}
             selectedDayNumber={selectedDay}

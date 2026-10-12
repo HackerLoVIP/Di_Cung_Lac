@@ -61,7 +61,7 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
           </div>
 
           {/* Timeline cac diem den */}
-          <div className="relative pl-6 sm:pl-8 border-l-2 border-amber-300 space-y-8 pt-2">
+          <div className={`relative ${compact ? 'pl-4 space-y-4 pt-1' : 'pl-6 sm:pl-8 space-y-8 pt-2'} border-l-2 border-amber-300`}>
             {day.items.map((item, idx) => {
               const isSelected = activeLocationId === item.location?.id;
 
@@ -69,14 +69,18 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
                 <div
                   key={idx}
                   onClick={() => onSelectLocation && item.location && onSelectLocation(item.location.id)}
-                  className="relative group space-y-3 cursor-pointer"
+                  className="relative group space-y-2 cursor-pointer"
                 >
                   {/* Pin Dot Indicator */}
                   <div
-                    className={`absolute -left-[35px] sm:-left-[43px] top-1.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full font-black text-xs flex items-center justify-center border-4 border-white shadow-md transition-all ${
+                    className={`absolute ${
+                      compact
+                        ? '-left-[25px] top-1 w-6 h-6 text-[10px]'
+                        : '-left-[35px] sm:-left-[43px] top-1.5 w-7 h-7 sm:w-8 sm:h-8 text-xs'
+                    } rounded-full font-black flex items-center justify-center border-2 border-white shadow-md transition-all ${
                       isSelected
-                        ? 'bg-amber-500 text-amber-950 scale-125 ring-4 ring-amber-200'
-                        : 'bg-amber-300 text-amber-950 group-hover:bg-amber-400 group-hover:scale-110'
+                        ? 'bg-amber-500 text-amber-950 scale-110 ring-2 ring-amber-300'
+                        : 'bg-amber-300 text-amber-950 group-hover:bg-amber-400 group-hover:scale-105'
                     }`}
                   >
                     {idx + 1}
@@ -84,64 +88,62 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
 
                   {/* Đoạn hiển thị di chuyển từ điểm trước đó */}
                   {item.travel_distance_km !== undefined && item.travel_distance_km > 0 && (
-                    <div className="inline-flex items-center gap-2 pastel-yellow-badge px-3 py-1.5 rounded-xl text-xs font-semibold shadow-2xs">
-                      <FaMotorcycle className="text-amber-700 text-sm" />
+                    <div className="inline-flex items-center gap-1.5 pastel-yellow-badge px-2.5 py-1 rounded-lg text-[11px] font-semibold shadow-2xs">
+                      <FaMotorcycle className="text-amber-700 text-xs" />
                       <span>
-                        Chặng di chuyển: <b>{item.travel_distance_km} km</b> (~{item.travel_time_minutes} phút)
+                        Chặng: <b>{item.travel_distance_km} km</b> (~{item.travel_time_minutes}p)
                       </span>
                     </div>
                   )}
 
                   {/* Card thông tin chi tiết địa điểm */}
                   <div
-                    className={`p-5 sm:p-6 rounded-2xl border transition-all space-y-4 ${
+                    className={`${
+                      compact ? 'p-3 rounded-xl space-y-2.5' : 'p-5 sm:p-6 rounded-2xl space-y-4'
+                    } border transition-all ${
                       isSelected
                         ? 'bg-amber-50/70 border-amber-300 shadow-md ring-2 ring-amber-300 scale-[1.01]'
-                        : 'bg-white hover:bg-amber-50/30 hover:border-amber-200/80 border-slate-200/80 shadow-xs hover:shadow-sm'
+                        : 'bg-white hover:bg-amber-50/30 hover:border-amber-200/80 border-slate-200/80 shadow-2xs hover:shadow-xs'
                     }`}
                   >
                     {/* Header Card */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1 text-xs font-bold pastel-yellow-badge px-2.5 py-0.5 rounded-lg shadow-2xs">
-                            <FaClock className="text-amber-700 text-xs" />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold pastel-yellow-badge px-2 py-0.5 rounded-md shadow-2xs">
+                            <FaClock className="text-amber-700 text-[10px]" />
                             {item.time_slot}
                           </span>
-                          <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider">
+                          <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
                             {item.location?.category}
                           </span>
-                          <h4 className="font-extrabold text-slate-900 text-lg sm:text-xl truncate">
+                          <h4 className={`font-black text-slate-900 ${compact ? 'text-sm' : 'text-lg sm:text-xl'} truncate`}>
                             {item.location?.name}
                           </h4>
                         </div>
-                        <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                          <FaMapMarkerAlt className="text-amber-500 flex-shrink-0" />
-                          {item.location?.address}
+                        <p className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
+                          <FaMapMarkerAlt className="text-amber-500 shrink-0 text-[10px]" />
+                          <span className="truncate">{item.location?.address}</span>
                         </p>
                       </div>
 
-                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
-                        <div className="text-right">
-                          <span className="text-[11px] text-slate-400 block font-medium">Dự trù chi phí</span>
-                          <span className="font-black text-amber-900 text-base sm:text-lg">
-                            {item.location?.avg_cost_vnd === 0
-                              ? 'Miễn phí'
-                              : `${item.location?.avg_cost_vnd?.toLocaleString('vi-VN')} đ`}
-                          </span>
-                        </div>
-
+                      <div className="text-right shrink-0">
+                        <span className={`font-black text-amber-900 ${compact ? 'text-xs sm:text-sm' : 'text-base sm:text-lg'} block`}>
+                          {item.location?.avg_cost_vnd === 0
+                            ? 'Miễn phí'
+                            : `${item.location?.avg_cost_vnd?.toLocaleString('vi-VN')} đ`}
+                        </span>
                         {/* Quick action buttons */}
-                        <div className="flex items-center gap-2 pt-1">
+                        <div className="flex items-center justify-end gap-1.5 pt-1">
                           <a
                             href={`https://www.google.com/maps/dir/?api=1&destination=${item.location?.latitude},${item.location?.longitude}&travelmode=driving`}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-xs font-bold text-amber-900 hover:text-amber-950 pastel-yellow-badge px-2.5 py-1 rounded-xl shadow-2xs hover:bg-amber-200 transition"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 hover:text-amber-950 pastel-yellow-badge px-2 py-0.5 rounded-lg shadow-2xs hover:bg-amber-200 transition"
                             title="Chỉ đường trên Google Maps"
                           >
-                            <FaDirections className="text-amber-700" /> Dẫn đường
+                            <FaDirections className="text-amber-700 text-[10px]" /> Dẫn đường
                           </a>
 
                           {onRemoveItem && (
@@ -151,21 +153,20 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
                                 e.stopPropagation();
                                 onRemoveItem(day.day_number, item.id);
                               }}
-                              className="text-slate-400 hover:text-rose-500 p-1.5 transition rounded-lg hover:bg-rose-50"
+                              className="text-slate-400 hover:text-rose-500 p-1 transition rounded hover:bg-rose-50 cursor-pointer"
                               title="Bỏ điểm dừng này"
                             >
-                              <FaTrash className="text-xs" />
+                              <FaTrash className="text-[10px]" />
                             </button>
                           )}
                         </div>
                       </div>
                     </div>
 
-
                     {/* Anh, Menu va Tips */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                    <div className={compact ? 'space-y-2 pt-0.5' : 'grid grid-cols-1 md:grid-cols-3 gap-4 pt-1'}>
                       {item.location && (
-                        <div className="md:col-span-1 h-40 rounded-2xl overflow-hidden border border-amber-200/60 relative shadow-2xs group/img">
+                        <div className={compact ? 'w-full h-28 rounded-xl overflow-hidden border border-amber-200/60 relative shadow-2xs group/img' : 'md:col-span-1 h-40 rounded-2xl overflow-hidden border border-amber-200/60 relative shadow-2xs group/img'}>
                           <img
                             src={
                               item.location.image_url ||
@@ -177,14 +178,13 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
                             }
                             alt={item.location.name}
                             onError={(e) => {
-                              // Tu dong fallback ve anh phong canh thuc neu link anh bi loi
                               const target = e.target as HTMLImageElement;
                               target.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800';
                             }}
-                            className="w-full h-full object-cover group-hover/img:scale-108 transition-transform duration-500"
+                            className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
-                          <span className="absolute bottom-2 left-2 text-[10px] font-bold text-white bg-slate-900/70 backdrop-blur-xs px-2 py-0.5 rounded-md">
+                          <span className="absolute bottom-1.5 left-2 text-[9px] font-bold text-white bg-slate-900/70 backdrop-blur-xs px-1.5 py-0.5 rounded">
                             📷 Ảnh thực tế
                           </span>
                         </div>
