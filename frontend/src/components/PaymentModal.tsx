@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { paymentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -103,30 +104,44 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  return (
+  // Khoa scroll cua trang khi modal mo
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const modalContent = (
     <div 
-      className="fixed inset-0 z-[999999] bg-slate-950/75 backdrop-blur-md overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-10 flex items-center justify-center animate-fade-in"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl border border-amber-200/90 relative z-[1000000] flex flex-col my-auto max-h-[92vh]"
+        className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-amber-200/90 relative z-[1000000] flex flex-col max-h-[88vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-amber-100 pb-3.5 mb-4 shrink-0">
+        <div className="flex items-center justify-between border-b border-amber-100 pb-3.5 mb-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center text-xl shadow-xs shrink-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center text-xl shadow-xs shrink-0">
               <FaCrown />
             </div>
             <div>
-              <h3 className="font-black text-slate-900 text-lg sm:text-xl leading-tight">Nâng Cấp Gói VIP Travel Pro</h3>
+              <h3 className="font-black text-slate-900 text-base sm:text-lg leading-tight">Nâng Cấp Gói VIP Travel Pro</h3>
               <p className="text-xs text-slate-500 mt-0.5">Mở khóa toàn bộ sức mạnh AI, quản lý chi tiêu & bản đồ không giới hạn</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center font-bold text-base cursor-pointer transition shrink-0"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center font-bold text-sm cursor-pointer transition shrink-0"
             title="Đóng popup"
           >
             ✕
@@ -137,13 +152,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         <div className="overflow-y-auto space-y-4 pr-1 flex-1">
           {/* Canh bao neu chua dang nhap */}
           {!user && (
-            <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
+            <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
               <div className="text-amber-950 font-medium">
                 ⚠️ Bạn chưa đăng nhập. Vui lòng đăng nhập để hệ thống tự động kích hoạt VIP cho tài khoản của bạn ngay khi thanh toán xong!
               </div>
               <a
                 href="/login"
-                className="px-5 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-xs text-center self-end sm:self-auto cursor-pointer"
+                className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-xs text-center self-end sm:self-auto cursor-pointer"
               >
                 Đăng nhập ngay
               </a>
@@ -356,5 +371,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
