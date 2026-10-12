@@ -118,7 +118,7 @@ body {
 /* Mascot Đoàn Du Lịch Bé Lạc (Ô tô 🚗 + Xe máy 🛵 + Xe đạp 🚲) */
 @keyframes peanutDrive {
   0% {
-    transform: translateX(-270px);
+    transform: translateX(-340px);
   }
   100% {
     transform: translateX(calc(100vw + 60px));
