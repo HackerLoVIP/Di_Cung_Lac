@@ -11,6 +11,7 @@ import { PlanTrip } from './pages/PlanTrip';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { MyTrips } from './pages/MyTrips';
+import { AdminDashboard } from './pages/AdminDashboard';
 
 export const App: React.FC = () => {
   return (
@@ -26,6 +27,7 @@ export const App: React.FC = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/my-trips" element={<MyTrips />} />
+              <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </main>
           <Footer />

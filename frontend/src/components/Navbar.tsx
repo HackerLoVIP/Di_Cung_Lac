@@ -43,8 +43,13 @@ export const Navbar: React.FC = () => {
 
           <div className="hidden md:flex items-center gap-3">
             {user ? (
-              <div className="flex items-center gap-3">
-                <Link to="/my-trips" className="text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors">
+              <div className="flex items-center gap-2.5">
+                {(user.role === 'admin' || user.email === 'haidangdmc123@gmail.com' || user.email === 'tronghieu3443@gmail.com') && (
+                  <Link to="/admin" className="text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
+                    ⚙️ Quản trị Admin
+                  </Link>
+                )}
+                <Link to="/my-trips" className="text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors">
                   Chuyến đi của tôi
                 </Link>
                 <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
