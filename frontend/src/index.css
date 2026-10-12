@@ -115,13 +115,13 @@ body {
   border: 1px solid rgba(254, 240, 138, 0.9) !important;
 }
 
-/* Mascot Bé Lạc Chạy Motor Ngang Navbar */
+/* Mascot Đoàn Phượt Bé Lạc 2 Xe Motor Ngang Navbar */
 @keyframes peanutDrive {
   0% {
-    transform: translateX(-100px);
+    transform: translateX(-320px);
   }
   100% {
-    transform: translateX(calc(100vw + 60px));
+    transform: translateX(calc(100vw + 80px));
   }
 }
 
@@ -130,12 +130,12 @@ body {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-2px) rotate(0.8deg);
+    transform: translateY(-2.5px) rotate(0.8deg);
   }
 }
 
 .peanut-rider-container {
-  animation: peanutDrive 14s infinite linear;
+  animation: peanutDrive 16s infinite linear;
 }
 
 .animate-peanut-bounce {
