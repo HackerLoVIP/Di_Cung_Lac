@@ -115,4 +115,32 @@ body {
   border: 1px solid rgba(254, 240, 138, 0.9) !important;
 }
 
+/* Mascot Bé Lạc Chạy Motor Ngang Navbar */
+@keyframes peanutDrive {
+  0% {
+    transform: translateX(-100px);
+  }
+  100% {
+    transform: translateX(calc(100vw + 60px));
+  }
+}
+
+@keyframes peanutBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px) rotate(0.8deg);
+  }
+}
+
+.peanut-rider-container {
+  animation: peanutDrive 14s infinite linear;
+}
+
+.animate-peanut-bounce {
+  animation: peanutBounce 0.3s infinite ease-in-out;
+}
+
+
 

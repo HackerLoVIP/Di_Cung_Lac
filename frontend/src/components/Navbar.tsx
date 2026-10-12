@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FaCompass, FaMapMarkedAlt, FaSuitcase, FaUser, FaSignOutAlt, FaBars, FaTimes, FaCrown } from 'react-icons/fa';
 import { PaymentModal } from './PaymentModal';
+import { PeanutRider } from './PeanutRider';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -17,12 +18,13 @@ export const Navbar: React.FC = () => {
 
 
   return (
-    <nav className="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+    <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-amber-200/60 shadow-2xs relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center font-bold text-xl shadow-xs group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center font-bold text-xl shadow-xs group-hover:scale-105 transition-transform relative">
               <FaCompass className="text-lg" />
+              <span className="absolute -bottom-1 -right-1 text-xs" title="Bé Lạc">🥜</span>
             </div>
             <div>
               <span className="font-extrabold text-xl text-slate-800 tracking-tight">Đi Cùng Lạc</span>
@@ -125,6 +127,9 @@ export const Navbar: React.FC = () => {
           window.location.reload();
         }}
       />
+
+      {/* Mascot Bé Lạc Lái Motor Chạy Ngang Navbar */}
+      <PeanutRider />
     </nav>
   );
 };
