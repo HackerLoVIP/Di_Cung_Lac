@@ -7,6 +7,7 @@ from app.models.wishlist import Wishlist
 from app.models.expense import Expense
 from app.models.trip_member import TripMember
 from app.models.notification import Notification
+from app.models.payment import PaymentTransaction
 
 __all__ = [
     "User",
@@ -20,4 +21,6 @@ __all__ = [
     "Expense",
     "TripMember",
     "Notification",
+    "PaymentTransaction",
 ]
+

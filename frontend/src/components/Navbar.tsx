@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FaCompass, FaMapMarkedAlt, FaSuitcase, FaUser, FaSignOutAlt, FaBars, FaTimes } from 'react-icons/fa';
+import { FaCompass, FaMapMarkedAlt, FaSuitcase, FaUser, FaSignOutAlt, FaBars, FaTimes, FaCrown } from 'react-icons/fa';
+import { PaymentModal } from './PaymentModal';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
+
 
   return (
     <nav className="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
@@ -42,6 +45,15 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
+            {/* VIP Upgrade Button */}
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl pastel-yellow-badge font-black text-xs shadow-2xs hover:scale-105 transition-all cursor-pointer"
+            >
+              <FaCrown className="text-amber-600" />
+              <span>{user?.is_vip ? 'VIP Pro 👑' : 'Nâng cấp VIP'}</span>
+            </button>
+
             {user ? (
               <div className="flex items-center gap-2.5">
                 {(user.role === 'admin' || user.email === 'haidangdmc123@gmail.com' || user.email === 'tronghieu3443@gmail.com') && (
@@ -53,8 +65,11 @@ export const Navbar: React.FC = () => {
                   Chuyến đi của tôi
                 </Link>
                 <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm relative">
                     {user.full_name ? user.full_name[0].toUpperCase() : 'U'}
+                    {user.is_vip ? (
+                      <span className="absolute -top-1 -right-1 text-[10px]" title="Thành viên VIP">👑</span>
+                    ) : null}
                   </div>
                   <span className="text-sm font-medium text-slate-700 max-w-[120px] truncate">{user.full_name}</span>
                   <button onClick={handleLogout} title="Đăng xuất" className="text-slate-400 hover:text-red-500 p-1.5 rounded-md transition-colors">
@@ -100,6 +115,17 @@ export const Navbar: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* SePay VietQR Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={() => {
+          setShowPaymentModal(false);
+          window.location.reload();
+        }}
+      />
     </nav>
   );
 };
+

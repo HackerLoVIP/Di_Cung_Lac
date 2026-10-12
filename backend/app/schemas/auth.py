@@ -28,7 +28,10 @@ class UserResponse(BaseModel):
     full_name: str
     avatar_url: Optional[str] = None
     role: str
+    is_vip: Optional[int] = 0
+    vip_expiry: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+

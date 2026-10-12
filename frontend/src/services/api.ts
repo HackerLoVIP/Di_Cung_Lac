@@ -128,4 +128,24 @@ export const expenseAPI = {
   },
 };
 
+export const paymentAPI = {
+  getPlans: async () => {
+    const res = await api.get('/payments/plans');
+    return res.data;
+  },
+  createOrder: async (planType: string) => {
+    const res = await api.post('/payments/create-order', { plan_type: planType });
+    return res.data;
+  },
+  checkStatus: async (orderCode: string) => {
+    const res = await api.get(`/payments/check-status/${orderCode}`);
+    return res.data;
+  },
+  simulateSuccess: async (orderCode: string) => {
+    const res = await api.post(`/payments/simulate-success/${orderCode}`);
+    return res.data;
+  },
+};
+
 export default api;
+

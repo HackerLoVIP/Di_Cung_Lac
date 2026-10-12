@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.routers import auth, provinces, locations, itineraries, reviews, wishlists, ai, admin, expenses
+from app.routers import auth, provinces, locations, itineraries, reviews, wishlists, ai, admin, expenses, payments
 
 # Khoi tao bang du lieu neu chua ton tai
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,8 @@ app.include_router(wishlists.router)
 app.include_router(ai.router)
 app.include_router(admin.router)
 app.include_router(expenses.router)
+app.include_router(payments.router)
+
 
 @app.get("/")
 def read_root():

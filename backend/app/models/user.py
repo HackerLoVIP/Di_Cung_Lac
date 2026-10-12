@@ -11,4 +11,6 @@ class User(Base):
     full_name = Column(String(255), nullable=False)
     avatar_url = Column(String(500), nullable=True)
     role = Column(String(50), default="user", nullable=False)  # user, admin
+    is_vip = Column(Integer, default=0, nullable=False)  # 0: thuong, 1: VIP AI Travel Pro
+    vip_expiry = Column(DateTime, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

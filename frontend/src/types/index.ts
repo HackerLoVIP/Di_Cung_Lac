@@ -73,4 +73,7 @@ export interface User {
   full_name: string;
   avatar_url?: string;
   role: string;
+  is_vip?: number;
+  vip_expiry?: string;
 }
+
