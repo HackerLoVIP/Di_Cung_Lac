@@ -26,6 +26,10 @@ export const authAPI = {
     const res = await api.get('/auth/me');
     return res.data;
   },
+  googleLogin: async (data: { credential?: string; access_token?: string; email?: string; full_name?: string; avatar_url?: string }) => {
+    const res = await api.post('/auth/google', data);
+    return res.data;
+  },
 };
 
 export const provinceAPI = {
@@ -56,13 +60,31 @@ export const locationAPI = {
 };
 
 export const itineraryAPI = {
-  generate: async (province_id: number, num_days: number, num_nights: number, prompt?: string): Promise<Itinerary> => {
-    const res = await api.post('/itineraries/generate', {
-      province_id,
-      num_days,
-      num_nights,
-      prompt,
-    });
+  generate: async (
+    params: {
+      province_id?: number;
+      destination?: string;
+      start_location?: string;
+      num_days?: number;
+      num_nights?: number;
+      prompt?: string;
+    } | number,
+    num_days?: number,
+    num_nights?: number,
+    prompt?: string
+  ): Promise<Itinerary> => {
+    let payload = {};
+    if (typeof params === 'object') {
+      payload = params;
+    } else {
+      payload = {
+        province_id: params,
+        num_days: num_days || 3,
+        num_nights: num_nights || 2,
+        prompt: prompt,
+      };
+    }
+    const res = await api.post('/itineraries/generate', payload);
     return res.data;
   },
   save: async (itinerary: Itinerary): Promise<Itinerary> => {
