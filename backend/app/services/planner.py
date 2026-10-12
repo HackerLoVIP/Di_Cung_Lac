@@ -137,20 +137,26 @@ def generate_smart_itinerary(
                     )
                     db.add(db_loc)
                     db.flush()
-                else:
-                    if not db_loc.image_url or "photo-1507525428034" in db_loc.image_url:
-                        db_loc.image_url = real_img
-                        db.commit()
 
-                    for m in itm.get("menu_items", []):
+                # Cập nhật ảnh thật nếu chưa có hoặc là ảnh cũ
+                if not db_loc.image_url or "photo-1507525428034" in db_loc.image_url:
+                    db_loc.image_url = real_img
+                    db.commit()
+
+                # Thêm menu items độc nhất (không lặp lại)
+                existing_menu_names = {mi.name for mi in db.query(MenuItem).filter(MenuItem.location_id == db_loc.id).all()}
+                for m in itm.get("menu_items", []):
+                    m_name = m.get("name", "Món đặc sản").strip()
+                    if m_name and m_name not in existing_menu_names:
                         db.add(MenuItem(
                             location_id=db_loc.id,
-                            name=m.get("name", "Món đặc sản"),
+                            name=m_name,
                             price_vnd=m.get("price_vnd", 30000),
                             is_signature=True
                         ))
-                    db.commit()
-                    db.refresh(db_loc)
+                        existing_menu_names.add(m_name)
+                db.commit()
+                db.refresh(db_loc)
 
                 # Tinh khoang cach va thoi gian di chuyen
                 cur_coords = (db_loc.latitude, db_loc.longitude)

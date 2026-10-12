@@ -191,33 +191,39 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
                         )}
 
                         {/* Menu mon an thuc te */}
-                        {item.location?.menu_items && item.location.menu_items.length > 0 && (
-                          <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
-                            <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                              <FaUtensils className="text-amber-500" /> Bảng giá & Món nổi bật:
+                        {item.location?.menu_items && item.location.menu_items.length > 0 && (() => {
+                          const uniqueMenuItems = item.location.menu_items.filter(
+                            (m, idx, arr) => arr.findIndex((x) => x.name?.trim().toLowerCase() === m.name?.trim().toLowerCase()) === idx
+                          );
+                          if (uniqueMenuItems.length === 0) return null;
+                          return (
+                            <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                              <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                <FaUtensils className="text-amber-500" /> Bảng giá & Món nổi bật:
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                {uniqueMenuItems.map((m) => (
+                                  <div
+                                    key={m.id || m.name}
+                                    className="flex items-center justify-between bg-slate-50 px-2 py-1 rounded-lg border border-slate-100"
+                                  >
+                                    <span className="font-medium text-slate-800 truncate pr-1">
+                                      {m.is_signature && (
+                                        <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded mr-1">
+                                          Ngon
+                                        </span>
+                                      )}
+                                      {m.name}
+                                    </span>
+                                    <span className="font-bold text-emerald-600 flex-shrink-0">
+                                      {m.price_vnd.toLocaleString('vi-VN')}đ
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                              {item.location.menu_items.map((m) => (
-                                <div
-                                  key={m.id}
-                                  className="flex items-center justify-between bg-slate-50 px-2 py-1 rounded-lg border border-slate-100"
-                                >
-                                  <span className="font-medium text-slate-800 truncate pr-1">
-                                    {m.is_signature && (
-                                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded mr-1">
-                                        Ngon
-                                      </span>
-                                    )}
-                                    {m.name}
-                                  </span>
-                                  <span className="font-bold text-emerald-600 flex-shrink-0">
-                                    {m.price_vnd.toLocaleString('vi-VN')}đ
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                          );
+                        })()}
 
                         {/* Mẹo du lịch thực tế */}
                         {item.location?.tips && (
