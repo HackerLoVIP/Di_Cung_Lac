@@ -120,11 +120,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const modalContent = (
     <div 
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in"
+      className="modal-overlay"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-amber-200/90 relative z-[1000000] flex flex-col max-h-[88vh]"
+        className="modal-content-box p-5 sm:p-7"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
