@@ -78,131 +78,103 @@ export const Home: React.FC = () => {
             Nhập bất kỳ điểm đến nào (Tây Ninh, Vũng Tàu, Đà Lạt, quê bạn,...), AI tự động đề xuất lộ trình tối ưu Google Maps kèm bóc tách dự toán chi phí thực tế.
           </p>
 
-          {/* Quick Plan Form */}
-          <div className="mt-8 pastel-card p-6 sm:p-8 rounded-3xl border border-amber-200/80 shadow-md max-w-2xl mx-auto text-left">
-            <form onSubmit={handleGenerate} className="space-y-4">
-              {/* Điểm đến tự do */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <FaMapMarkerAlt className="text-amber-500 text-sm" /> Điểm đến của bạn (Nhập tự do)
-                  </span>
-                  <span className="text-[11px] font-normal text-amber-700 lowercase">AI tự tìm địa điểm & đường đi</span>
+          {/* Modern Floating Pill Search Bar (Airbnb / Traveloka Style) */}
+          <div className="mt-8 max-w-4xl mx-auto">
+            <form 
+              onSubmit={handleGenerate} 
+              className="bg-white/95 backdrop-blur-md p-3 sm:p-4 rounded-3xl sm:rounded-full shadow-xl border-2 border-amber-200/90 hover:border-amber-300 transition-all flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3"
+            >
+              {/* Segment 1: Điểm đến */}
+              <div className="flex-1 px-4 py-2 hover:bg-amber-50/50 rounded-2xl sm:rounded-full transition text-left relative">
+                <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                  <FaMapMarkerAlt className="text-amber-500" /> Điểm đến
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    placeholder="Nhập nơi bạn muốn đến (vd: Tây Ninh, Núi Bà Đen, Bến Tre, Đà Lạt, Sapa...)"
-                    className="w-full bg-slate-50/70 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-800 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 pl-10 transition"
-                  />
-                  <FaCompass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
-                </div>
-
-                {/* Gợi ý điểm đến phổ biến */}
-                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] text-slate-400 font-medium">Gợi ý nhanh:</span>
-                  {quickDestinations.map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      onClick={() => setDestination(item.name)}
-                      className={`text-xs px-2.5 py-1 rounded-xl font-medium transition-all cursor-pointer ${
-                        destination.toLowerCase() === item.name.toLowerCase()
-                          ? 'pastel-yellow-badge font-bold shadow-2xs scale-105'
-                          : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/80'
-                      }`}
-                    >
-                      {item.name}
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="text"
+                  required
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  placeholder="Bạn muốn đi đâu? (Tây Ninh, Đà Lạt...)"
+                  className="w-full bg-transparent border-none text-slate-800 font-black text-sm focus:outline-none placeholder:text-slate-400 p-0 mt-0.5"
+                />
               </div>
 
-              {/* Điểm xuất phát */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <FaCrosshairs className="text-blue-500" /> Điểm xuất phát của bạn
-                  </span>
+              <div className="hidden sm:block w-px h-8 bg-slate-200" />
+
+              {/* Segment 2: Điểm xuất phát */}
+              <div className="flex-1 px-4 py-2 hover:bg-amber-50/50 rounded-2xl sm:rounded-full transition text-left relative">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                    <FaCrosshairs className="text-blue-500" /> Điểm đi
+                  </label>
                   <button
                     type="button"
                     onClick={handleGetCurrentLocation}
-                    className="text-[11px] text-blue-600 hover:underline font-semibold cursor-pointer"
+                    className="text-[10px] text-blue-600 hover:underline font-bold cursor-pointer"
                   >
-                    📍 Lấy vị trí GPS hiện tại
+                    📍 GPS
                   </button>
-                </label>
+                </div>
                 <input
                   type="text"
                   value={startLocation}
                   onChange={(e) => setStartLocation(e.target.value)}
-                  placeholder="Vd: TP. Hồ Chí Minh, Bình Dương, Nhà tôi..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="TP. Hồ Chí Minh..."
+                  className="w-full bg-transparent border-none text-slate-800 font-bold text-sm focus:outline-none placeholder:text-slate-400 p-0 mt-0.5 truncate"
                 />
               </div>
 
-              {/* Số ngày & số đêm */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <FaCalendarAlt className="text-emerald-500" /> Số ngày đi
-                  </label>
-                  <select
-                    value={numDays}
-                    onChange={(e) => {
-                      const d = Number(e.target.value);
-                      setNumDays(d);
-                      setNumNights(Math.max(0, d - 1));
-                    }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {[1, 2, 3, 4, 5, 7].map((d) => (
-                      <option key={d} value={d}>{d} ngày</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="hidden sm:block w-px h-8 bg-slate-200" />
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    Số đêm nghỉ
-                  </label>
-                  <select
-                    value={numNights}
-                    onChange={(e) => setNumNights(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {[0, 1, 2, 3, 4, 5, 6].map((n) => (
-                      <option key={n} value={n}>{n} đêm</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Yêu cầu đặc biệt */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Sở thích / Yêu cầu riêng cho AI (tùy chọn)
+              {/* Segment 3: Thời gian */}
+              <div className="w-full sm:w-36 px-4 py-2 hover:bg-amber-50/50 rounded-2xl sm:rounded-full transition text-left">
+                <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                  <FaCalendarAlt className="text-emerald-500" /> Thời gian
                 </label>
-                <input
-                  type="text"
-                  placeholder="Vd: Thích ăn bò tơ / hải sản, leo núi, đi chùa tâm linh, ngân sách tiết kiệm..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400"
-                />
+                <select
+                  value={numDays}
+                  onChange={(e) => {
+                    const d = Number(e.target.value);
+                    setNumDays(d);
+                    setNumNights(Math.max(0, d - 1));
+                  }}
+                  className="w-full bg-transparent border-none text-slate-800 font-bold text-sm focus:outline-none p-0 mt-0.5 cursor-pointer"
+                >
+                  {[1, 2, 3, 4, 5, 7].map((d) => (
+                    <option key={d} value={d}>{d} ngày {Math.max(0, d - 1)} đêm</option>
+                  ))}
+                </select>
               </div>
 
+              {/* Action Button: AI Generate */}
               <button
                 type="submit"
-                className="w-full mt-2 pastel-yellow-btn font-black py-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
+                className="pastel-yellow-btn px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl sm:rounded-full font-black text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0 hover:scale-105"
+                title="Khám phá và lập tour tự động"
               >
-                <FaMagic className="text-amber-800" />
-                AI Tự động lên lịch trình ngay
+                <FaMagic className="text-amber-900 text-base" />
+                <span>Lên lịch trình</span>
               </button>
             </form>
+
+            {/* Quick chips pills underneath */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <span className="text-xs text-slate-400 font-medium">Khám phá nhanh:</span>
+              {quickDestinations.map((item) => (
+                <button
+                  key={item.name}
+                  type="button"
+                  onClick={() => setDestination(item.name)}
+                  className={`text-xs px-3 py-1.5 rounded-full font-bold transition-all cursor-pointer shadow-2xs ${
+                    destination.toLowerCase() === item.name.toLowerCase()
+                      ? 'pastel-yellow-badge scale-105 border-amber-300'
+                      : 'bg-white hover:bg-amber-50/80 text-slate-600 border border-slate-200/90'
+                  }`}
+                >
+                  {item.tag || item.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>

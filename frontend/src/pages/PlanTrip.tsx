@@ -29,6 +29,7 @@ export const PlanTrip: React.FC = () => {
   const [showCostModal, setShowCostModal] = useState<boolean>(false);
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [activeLocationId, setActiveLocationId] = useState<number | null>(null);
+  const [activeViewMode, setActiveViewMode] = useState<'all' | 'map' | 'timeline'>('all');
 
   // Expense Tracker State
   interface ExpenseItem {
@@ -308,6 +309,43 @@ export const PlanTrip: React.FC = () => {
 
         {/* Action Controls Toolbar */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* View Mode Switcher */}
+          <div className="bg-slate-100 p-1 rounded-2xl flex items-center border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setActiveViewMode('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeViewMode === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              ✨ Toàn cảnh
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveViewMode('map')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeViewMode === 'map'
+                  ? 'bg-white text-amber-950 font-black shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              🗺️ Bản đồ lớn
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveViewMode('timeline')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeViewMode === 'timeline'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              📋 Chi tiết
+            </button>
+          </div>
+
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer shadow-2xs hover:scale-102"
@@ -317,7 +355,7 @@ export const PlanTrip: React.FC = () => {
           </button>
           <button
             onClick={() => setShowCostModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl pastel-yellow-btn font-extrabold text-xs cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl pastel-yellow-btn font-extrabold text-xs cursor-pointer shadow-xs"
           >
             💰 Sổ chi tiêu ({expenses.length})
           </button>
@@ -382,90 +420,98 @@ export const PlanTrip: React.FC = () => {
         )}
       </div>
 
-      {/* Main Map & Navigation Section */}
-      <div className="pastel-card p-5 sm:p-6 rounded-3xl border border-amber-200/60 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-100/80 pb-4">
-          <div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
-              <span>🗺️ Bản Đồ Lộ Trình Thông Minh</span>
-              <span className="text-[10px] font-bold text-amber-900 bg-amber-200/60 px-2.5 py-0.5 rounded-full">Google Maps Studio</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">Rà chuột hoặc nhấp vào điểm dừng trên bản đồ để xem chi tiết lộ trình</p>
-          </div>
+      {/* Main Map & Navigation Section (Hidden if activeViewMode === 'timeline') */}
+      {(activeViewMode === 'all' || activeViewMode === 'map') && (
+        <div className="pastel-card p-5 sm:p-6 rounded-3xl border border-amber-200/60 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-100/80 pb-4">
+            <div>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+                <span>🗺️ Bản Đồ Lộ Trình Thông Minh</span>
+                <span className="text-[10px] font-bold text-amber-900 bg-amber-200/60 px-2.5 py-0.5 rounded-full">Google Maps Studio</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">Rà chuột hoặc nhấp vào điểm dừng trên bản đồ để xem chi tiết lộ trình</p>
+            </div>
 
-          {/* Day Navigation Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {itinerary.days.map((day) => (
+            {/* Day Navigation Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {itinerary.days.map((day) => (
+                <button
+                  key={day.day_number}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDay(day.day_number);
+                    setActiveLocationId(null);
+                  }}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                    selectedDay === day.day_number
+                      ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102'
+                      : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/80 hover:border-amber-200'
+                  }`}
+                >
+                  <span>Ngày {day.day_number}</span>
+                  <span className="text-[10px] opacity-75">({day.items.length})</span>
+                </button>
+              ))}
               <button
-                key={day.day_number}
                 type="button"
                 onClick={() => {
-                  setSelectedDay(day.day_number);
+                  setSelectedDay(0);
                   setActiveLocationId(null);
                 }}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-                  selectedDay === day.day_number
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  selectedDay === 0
                     ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102'
                     : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/80 hover:border-amber-200'
                 }`}
               >
-                <span>Ngày {day.day_number}</span>
-                <span className="text-[10px] opacity-75">({day.items.length})</span>
+                ✨ Toàn chuyến
               </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedDay(0);
-                setActiveLocationId(null);
-              }}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            </div>
+          </div>
+
+          {/* Master Google Maps Studio Container */}
+          <div className={`rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs ${activeViewMode === 'map' ? 'min-h-[580px]' : ''}`}>
+            <RouteMap
+              items={
                 selectedDay === 0
-                  ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102'
-                  : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/80 hover:border-amber-200'
-              }`}
-            >
-              ✨ Toàn chuyến
-            </button>
+                  ? itinerary.days.flatMap((d) => d.items)
+                  : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || []
+              }
+              dayNumber={selectedDay || 1}
+              activeLocationId={activeLocationId}
+              onSelectLocation={(locId) => setActiveLocationId(locId)}
+            />
           </div>
         </div>
+      )}
 
-        {/* Master Google Maps Studio Container */}
-        <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs">
-          <RouteMap
-            items={
-              selectedDay === 0
-                ? itinerary.days.flatMap((d) => d.items)
-                : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || []
-            }
-            dayNumber={selectedDay || 1}
+      {/* Timeline Section (Hidden if activeViewMode === 'map') */}
+      {(activeViewMode === 'all' || activeViewMode === 'timeline') && (
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <span>📋 Chi tiết các điểm dừng chân & Ẩm thực</span>
+              <span className="text-xs font-semibold text-slate-400">• Dữ liệu & Ảnh thật 100%</span>
+            </h3>
+          </div>
+          <ItineraryTimeline
+            days={itinerary.days}
+            selectedDayNumber={selectedDay}
             activeLocationId={activeLocationId}
             onSelectLocation={(locId) => setActiveLocationId(locId)}
+            onRemoveItem={(dayNum, itemId) => {
+              const updatedDays = itinerary.days.map((d) => {
+                if (d.day_number === dayNum) {
+                  return { ...d, items: d.items.filter((i) => i.id !== itemId) };
+                }
+                return d;
+              });
+              setItinerary({ ...itinerary, days: updatedDays });
+              toast.success('Đã bỏ điểm dừng khỏi lịch trình');
+            }}
           />
         </div>
-      </div>
-
-
-      {/* Timeline Section */}
-      <div className="space-y-4 pt-4">
-        <h3 className="text-lg font-black text-slate-800">Chi tiết các điểm dừng chân & Ẩm thực</h3>
-        <ItineraryTimeline
-          days={itinerary.days}
-          selectedDayNumber={selectedDay}
-          activeLocationId={activeLocationId}
-          onSelectLocation={(locId) => setActiveLocationId(locId)}
-          onRemoveItem={(dayNum, itemId) => {
-            const updatedDays = itinerary.days.map((d) => {
-              if (d.day_number === dayNum) {
-                return { ...d, items: d.items.filter((i) => i.id !== itemId) };
-              }
-              return d;
-            });
-            setItinerary({ ...itinerary, days: updatedDays });
-            toast.success('Đã bỏ điểm dừng khỏi lịch trình');
-          }}
-        />
-      </div>
+      )}
 
       {/* Sổ Chi Tiêu Modal (Interactive Budget Book) */}
       {showCostModal && (

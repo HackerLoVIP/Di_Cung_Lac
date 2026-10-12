@@ -45,12 +45,12 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            {/* VIP Upgrade Button */}
+            {/* VIP Upgrade Button with Gold Shimmer */}
             <button
               onClick={() => setShowPaymentModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl pastel-yellow-badge font-black text-xs shadow-2xs hover:scale-105 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl vip-shimmer-btn font-black text-xs shadow-sm cursor-pointer"
             >
-              <FaCrown className="text-amber-600" />
+              <FaCrown className="text-amber-700 text-sm animate-bounce" />
               <span>{user?.is_vip ? 'VIP Pro 👑' : 'Nâng cấp VIP'}</span>
             </button>
 

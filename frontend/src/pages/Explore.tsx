@@ -15,13 +15,13 @@ export const Explore: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
 
   const categories = [
-    { key: 'all', label: 'Tất cả' },
-    { key: 'tourist_spot', label: 'Tham quan' },
-    { key: 'beach', label: 'Bãi biển' },
-    { key: 'restaurant', label: 'Quán ăn' },
-    { key: 'cafe', label: 'Cà phê' },
-    { key: 'hotel', label: 'Khách sạn' },
-    { key: 'shopping', label: 'Mua sắm' },
+    { key: 'all', label: 'Tất cả', icon: '🌟' },
+    { key: 'tourist_spot', label: 'Tham quan', icon: '🏛️' },
+    { key: 'beach', label: 'Bãi biển', icon: '🏖️' },
+    { key: 'restaurant', label: 'Quán ăn ngon', icon: '🍜' },
+    { key: 'cafe', label: 'Cà phê view chill', icon: '☕' },
+    { key: 'hotel', label: 'Khách sạn', icon: '🏨' },
+    { key: 'shopping', label: 'Mua sắm & Chợ', icon: '🛍️' },
   ];
 
   useEffect(() => {
@@ -47,9 +47,9 @@ export const Explore: React.FC = () => {
             alt={province.name}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent flex items-end p-6 sm:p-10">
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/35 to-transparent flex items-end p-6 sm:p-10">
             <div className="text-white space-y-2">
-              <span className="text-xs bg-emerald-500 font-bold px-3 py-1 rounded-full uppercase">Điểm đến</span>
+              <span className="text-xs pastel-yellow-badge text-amber-950 font-bold px-3 py-1 rounded-full uppercase tracking-wider">Điểm đến nổi bật</span>
               <h1 className="text-3xl sm:text-4xl font-black">{province.name}</h1>
               <p className="text-slate-200 text-sm max-w-2xl">{province.description}</p>
             </div>
@@ -57,19 +57,20 @@ export const Explore: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+      {/* Smart Filter Tabs */}
+      <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none pt-1">
         {categories.map((c) => (
           <button
             key={c.key}
             onClick={() => setActiveCategory(c.key)}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 shadow-2xs ${
               activeCategory === c.key
-                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                ? 'pastel-yellow-badge border-amber-400 font-black shadow-sm scale-105'
+                : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:bg-amber-50/40'
             }`}
           >
-            {c.label}
+            <span>{c.icon}</span>
+            <span>{c.label}</span>
           </button>
         ))}
       </div>

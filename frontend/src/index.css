@@ -61,6 +61,26 @@ body {
   box-shadow: 0 4px 12px rgba(234, 179, 8, 0.2);
 }
 
+/* VIP Button Shimmer Animation */
+@keyframes shimmerEffect {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.vip-shimmer-btn {
+  background: linear-gradient(90deg, #fef08a 0%, #ffffff 50%, #fde047 100%);
+  background-size: 200% 100%;
+  animation: shimmerEffect 3s infinite linear;
+  color: #713f12;
+  border: 1px solid #facc15;
+  transition: all 0.25s ease;
+}
+
+.vip-shimmer-btn:hover {
+  box-shadow: 0 0 16px rgba(234, 179, 8, 0.45);
+  transform: scale(1.05);
+}
+
 /* Modal Center Guarantee */
 .modal-overlay {
   position: fixed !important;
