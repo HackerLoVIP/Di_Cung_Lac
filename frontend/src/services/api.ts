@@ -109,4 +109,23 @@ export const itineraryAPI = {
   },
 };
 
+export const expenseAPI = {
+  getByItineraryId: async (itineraryId: number) => {
+    const res = await api.get(`/expenses/${itineraryId}`);
+    return res.data;
+  },
+  create: async (data: { itinerary_id?: number; title: string; category: string; planned_cost: number; actual_cost: number }) => {
+    const res = await api.post('/expenses', data);
+    return res.data;
+  },
+  update: async (id: number, data: { title?: string; category?: string; planned_cost?: number; actual_cost?: number }) => {
+    const res = await api.put(`/expenses/${id}`, data);
+    return res.data;
+  },
+  delete: async (id: number) => {
+    const res = await api.delete(`/expenses/${id}`);
+    return res.data;
+  },
+};
+
 export default api;

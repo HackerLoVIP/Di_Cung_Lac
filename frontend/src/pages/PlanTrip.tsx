@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { itineraryAPI } from '../services/api';
+import { itineraryAPI, expenseAPI } from '../services/api';
 import { Itinerary } from '../types';
 import { ItineraryTimeline } from '../components/ItineraryTimeline';
 import { RouteMap } from '../components/RouteMap';
 import { useAuth } from '../contexts/AuthContext';
-import { FaBookmark, FaShareAlt, FaMoneyBillWave, FaMapMarkerAlt, FaCalendarAlt, FaSpinner, FaCloudSun } from 'react-icons/fa';
+import { FaBookmark, FaShareAlt, FaMoneyBillWave, FaMapMarkerAlt, FaCalendarAlt, FaSpinner, FaCloudSun, FaPlus, FaTrash, FaCheck, FaEdit } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 export const PlanTrip: React.FC = () => {
@@ -29,6 +29,155 @@ export const PlanTrip: React.FC = () => {
   const [showCostModal, setShowCostModal] = useState<boolean>(false);
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [activeLocationId, setActiveLocationId] = useState<number | null>(null);
+
+  // Expense Tracker State
+  interface ExpenseItem {
+    id?: number;
+    tempId?: string;
+    title: string;
+    category: string;
+    planned_cost: number;
+    actual_cost: number;
+  }
+
+  const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState('food');
+  const [newPlanned, setNewPlanned] = useState('');
+  const [editingActualId, setEditingActualId] = useState<number | string | null>(null);
+  const [tempActualVal, setTempActualVal] = useState('');
+
+  const initDefaultExpenses = (itin: Itinerary) => {
+    const list: ExpenseItem[] = [];
+    itin.days?.forEach((day) => {
+      day.items?.forEach((item) => {
+        if (item.location) {
+          let cat = 'sightseeing';
+          if (item.location.category === 'restaurant') cat = 'food';
+          else if (item.location.category === 'cafe') cat = 'cafe';
+          else if (item.location.category === 'hotel') cat = 'hotel';
+
+          const cost = item.location.avg_cost_vnd || 0;
+          if (cost > 0) {
+            list.push({
+              tempId: `loc_${item.id}_${item.location.id}`,
+              title: `${item.location.name} (Ngày ${day.day_number})`,
+              category: cat,
+              planned_cost: cost,
+              actual_cost: 0
+            });
+          }
+        }
+      });
+    });
+
+    const numDaysVal = itin.num_days || 1;
+    list.push({
+      tempId: 'transport_default',
+      title: `Xăng xe & di chuyển (${numDaysVal} ngày)`,
+      category: 'transport',
+      planned_cost: numDaysVal * 100000,
+      actual_cost: 0
+    });
+
+    setExpenses(list);
+  };
+
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) {
+      toast.error('Vui lòng nhập tên khoản chi');
+      return;
+    }
+    const planned = Number(newPlanned) || 0;
+
+    if (itinerary?.id) {
+      try {
+        const created = await expenseAPI.create({
+          itinerary_id: itinerary.id,
+          title: newTitle.trim(),
+          category: newCategory,
+          planned_cost: planned,
+          actual_cost: 0,
+        });
+        setExpenses((prev) => [...prev, created]);
+        toast.success('Đã thêm khoản chi mới');
+      } catch (err) {
+        toast.error('Lỗi khi lưu khoản chi');
+      }
+    } else {
+      const newItem: ExpenseItem = {
+        tempId: `custom_${Date.now()}`,
+        title: newTitle.trim(),
+        category: newCategory,
+        planned_cost: planned,
+        actual_cost: 0,
+      };
+      setExpenses((prev) => [...prev, newItem]);
+      toast.success('Đã thêm khoản chi');
+    }
+
+    setNewTitle('');
+    setNewPlanned('');
+  };
+
+  const handleDeleteExpense = async (item: ExpenseItem) => {
+    if (item.id) {
+      try {
+        await expenseAPI.delete(item.id);
+        setExpenses((prev) => prev.filter((x) => x.id !== item.id));
+        toast.success('Đã xoá khoản chi');
+      } catch {
+        toast.error('Không thể xoá khoản chi');
+      }
+    } else {
+      setExpenses((prev) => prev.filter((x) => x.tempId !== item.tempId));
+      toast.success('Đã xoá khoản chi');
+    }
+  };
+
+  const handleSaveActual = async (item: ExpenseItem) => {
+    const val = Number(tempActualVal) || 0;
+    if (item.id) {
+      try {
+        const updated = await expenseAPI.update(item.id, { actual_cost: val });
+        setExpenses((prev) => prev.map((x) => (x.id === item.id ? updated : x)));
+        toast.success('Đã lưu thực chi');
+      } catch {
+        toast.error('Lỗi cập nhật');
+      }
+    } else {
+      setExpenses((prev) =>
+        prev.map((x) => (x.tempId === item.tempId ? { ...x, actual_cost: val } : x))
+      );
+      toast.success('Đã lưu thực chi');
+    }
+    setEditingActualId(null);
+  };
+
+  const totalPlanned = expenses.reduce((sum, item) => sum + (item.planned_cost || 0), 0);
+  const totalActual = expenses.reduce((sum, item) => sum + (item.actual_cost || 0), 0);
+  const costDiff = totalPlanned - totalActual;
+
+  const getCategoryBadge = (cat: string) => {
+    switch (cat) {
+      case 'food':
+        return <span className="bg-amber-100 text-amber-800 text-[11px] px-2 py-0.5 rounded-md font-semibold">🍜 Ẩm thực</span>;
+      case 'cafe':
+        return <span className="bg-orange-100 text-orange-800 text-[11px] px-2 py-0.5 rounded-md font-semibold">☕ Cà phê</span>;
+      case 'sightseeing':
+        return <span className="bg-purple-100 text-purple-800 text-[11px] px-2 py-0.5 rounded-md font-semibold">🎟️ Vé/Điểm</span>;
+      case 'transport':
+        return <span className="bg-blue-100 text-blue-800 text-[11px] px-2 py-0.5 rounded-md font-semibold">🛵 Đi lại</span>;
+      case 'hotel':
+        return <span className="bg-emerald-100 text-emerald-800 text-[11px] px-2 py-0.5 rounded-md font-semibold">🏨 Khách sạn</span>;
+      case 'shopping':
+        return <span className="bg-pink-100 text-pink-800 text-[11px] px-2 py-0.5 rounded-md font-semibold">🛍️ Mua sắm</span>;
+      default:
+        return <span className="bg-slate-100 text-slate-800 text-[11px] px-2 py-0.5 rounded-md font-semibold">📦 Khác</span>;
+    }
+  };
+
 
   useEffect(() => {
     setLoading(true);
@@ -70,6 +219,24 @@ export const PlanTrip: React.FC = () => {
         .finally(() => setLoading(false));
     }
   }, [savedTripId, destination, startLocation, provinceId, numDays, numNights, prompt]);
+
+  useEffect(() => {
+    if (!itinerary) return;
+    if (itinerary.id) {
+      expenseAPI.getByItineraryId(itinerary.id)
+        .then((data) => {
+          if (data && data.length > 0) {
+            setExpenses(data);
+          } else {
+            initDefaultExpenses(itinerary);
+          }
+        })
+        .catch(() => initDefaultExpenses(itinerary));
+    } else {
+      initDefaultExpenses(itinerary);
+    }
+  }, [itinerary]);
+
 
   const handleSaveTrip = async () => {
     if (!user) {
@@ -151,7 +318,7 @@ export const PlanTrip: React.FC = () => {
             onClick={() => setShowCostModal(true)}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-bold text-xs sm:text-sm hover:bg-amber-100 transition-colors cursor-pointer"
           >
-            💰 Sổ chi tiêu
+            💰 Sổ chi tiêu ({expenses.length})
           </button>
           <button
             onClick={handleShare}
@@ -282,84 +449,186 @@ export const PlanTrip: React.FC = () => {
         />
       </div>
 
-      {/* Sổ tay chi tiêu Modal */}
+      {/* Sổ Chi Tiêu Modal (Interactive Budget Book) */}
       {showCostModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">💰</span>
-                <h3 className="text-lg font-black text-slate-800">Sổ Tay Chi Tiêu Chuyến Đi</h3>
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg">
+                  💰
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-lg">Sổ Tay Chi Tiêu & Dự Toán</h3>
+                  <p className="text-xs text-slate-400">Theo dõi, chỉnh sửa và nhập liệu các khoản chi thực tế</p>
+                </div>
               </div>
               <button
                 onClick={() => setShowCostModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center font-bold text-sm cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-800 uppercase">Tổng dự toán chuyến đi</span>
-              <span className="text-xl font-black text-emerald-700">
-                {itinerary.total_cost.toLocaleString('vi-VN')} VNĐ
+            {/* Total Summary Cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Dự toán dự kiến</span>
+                <span className="text-sm sm:text-base font-black text-slate-800">
+                  {totalPlanned.toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-amber-700 block mb-1">Đã chi thực tế</span>
+                <span className="text-sm sm:text-base font-black text-amber-900">
+                  {totalActual.toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+              <div className={`p-3 rounded-2xl text-center border ${costDiff >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+                <span className={`text-[10px] uppercase font-bold block mb-1 ${costDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {costDiff >= 0 ? 'Còn dư' : 'Bội chi'}
+                </span>
+                <span className={`text-sm sm:text-base font-black ${costDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {Math.abs(costDiff).toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Add Expense Form */}
+            <form onSubmit={handleAddExpense} className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-2">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <FaPlus className="text-emerald-600 text-[10px]" /> Thêm khoản chi mới:
               </span>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <input
+                  type="text"
+                  placeholder="Tên khoản chi (ví dụ: Ăn trưa, Vé cổng, Mua quà...)"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="sm:col-span-6 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="sm:col-span-3 px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="food">🍜 Ăn uống</option>
+                  <option value="cafe">☕ Cà phê</option>
+                  <option value="sightseeing">🎟️ Vé/Điểm</option>
+                  <option value="transport">🛵 Đi lại</option>
+                  <option value="hotel">🏨 Khách sạn</option>
+                  <option value="shopping">🛍️ Mua sắm</option>
+                  <option value="other">📦 Khác</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="Dự kiến (đ)"
+                  value={newPlanned}
+                  onChange={(e) => setNewPlanned(e.target.value)}
+                  className="sm:col-span-2 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="submit"
+                  className="sm:col-span-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center shadow-sm"
+                  title="Thêm khoản chi"
+                >
+                  <FaPlus />
+                </button>
+              </div>
+            </form>
+
+            {/* Expense Items List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[200px]">
+              {expenses.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-xs">Chưa có khoản chi nào trong sổ. Hãy thêm mục mới bên trên!</div>
+              ) : (
+                expenses.map((item) => {
+                  const itemId = item.id || item.tempId!;
+                  const isEditing = editingActualId === itemId;
+
+                  return (
+                    <div
+                      key={itemId}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 transition-all text-xs gap-3 shadow-xs"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {getCategoryBadge(item.category)}
+                        <span className="font-bold text-slate-800 truncate">{item.title}</span>
+                      </div>
+
+                      <div className="flex items-center gap-4 shrink-0">
+                        {/* Planned cost */}
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block leading-tight">Dự kiến</span>
+                          <span className="font-semibold text-slate-600">
+                            {item.planned_cost.toLocaleString('vi-VN')} đ
+                          </span>
+                        </div>
+
+                        {/* Actual cost (editable inline) */}
+                        <div className="text-right min-w-[95px]">
+                          <span className="text-[10px] text-amber-700 block leading-tight font-bold">Thực chi</span>
+                          {isEditing ? (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <input
+                                type="number"
+                                autoFocus
+                                value={tempActualVal}
+                                onChange={(e) => setTempActualVal(e.target.value)}
+                                className="w-20 px-1.5 py-0.5 text-xs border border-amber-400 rounded-md bg-amber-50 focus:outline-none"
+                              />
+                              <button
+                                onClick={() => handleSaveActual(item)}
+                                className="text-emerald-600 hover:text-emerald-800 p-1 cursor-pointer"
+                                title="Lưu"
+                              >
+                                <FaCheck />
+                              </button>
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => {
+                                setEditingActualId(itemId);
+                                setTempActualVal(item.actual_cost ? item.actual_cost.toString() : '');
+                              }}
+                              className="font-bold text-slate-900 flex items-center justify-end gap-1 cursor-pointer hover:text-amber-600 transition"
+                              title="Nhấp để nhập số tiền thực chi"
+                            >
+                              <span>{item.actual_cost ? `${item.actual_cost.toLocaleString('vi-VN')} đ` : 'Chưa nhập'}</span>
+                              <FaEdit className="text-[10px] text-slate-400" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Delete button */}
+                        <button
+                          onClick={() => handleDeleteExpense(item)}
+                          className="text-slate-300 hover:text-rose-500 transition p-1 cursor-pointer"
+                          title="Xoá khoản chi này"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
-            <div className="space-y-3 text-xs">
-              <p className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">Bóc tách ngân sách thực tế:</p>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span>🍜</span>
-                  <span className="font-bold text-slate-700">Ẩm thực & Bữa ăn chính</span>
-                </div>
-                <span className="font-extrabold text-slate-900">
-                  {itinerary.days.reduce((acc, d) => acc + d.items.filter(i => i.location?.category === 'restaurant').reduce((s, i) => s + (i.location?.avg_cost_vnd || 0), 0), 0).toLocaleString('vi-VN')} VNĐ
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span>🎟️</span>
-                  <span className="font-bold text-slate-700">Vé tham quan, cáp treo & check-in</span>
-                </div>
-                <span className="font-extrabold text-slate-900">
-                  {itinerary.days.reduce((acc, d) => acc + d.items.filter(i => i.location?.category === 'tourist_spot' || i.location?.category === 'beach').reduce((s, i) => s + (i.location?.avg_cost_vnd || 0), 0), 0).toLocaleString('vi-VN')} VNĐ
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span>☕</span>
-                  <span className="font-bold text-slate-700">Cà phê thư giãn & đồ uống</span>
-                </div>
-                <span className="font-extrabold text-slate-900">
-                  {itinerary.days.reduce((acc, d) => acc + d.items.filter(i => i.location?.category === 'cafe').reduce((s, i) => s + (i.location?.avg_cost_vnd || 0), 0), 0).toLocaleString('vi-VN')} VNĐ
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span>🛵</span>
-                  <span className="font-bold text-slate-700">Xăng xe & di chuyển ({itinerary.num_days} ngày)</span>
-                </div>
-                <span className="font-extrabold text-slate-900">
-                  {((itinerary.num_days || 2) * 100000).toLocaleString('vi-VN')} VNĐ
-                </span>
-              </div>
+            {/* Modal Footer */}
+            <div className="border-t border-slate-100 pt-3 flex items-center justify-between text-xs">
+              <span className="text-slate-400 italic text-[11px]">
+                * Nhấp vào cột "Thực chi" để nhập số tiền chi thực tế sau mỗi hoạt động.
+              </span>
+              <button
+                onClick={() => setShowCostModal(false)}
+                className="bg-slate-900 hover:bg-black text-white font-bold py-2.5 px-6 rounded-xl transition cursor-pointer"
+              >
+                Xong & Đóng
+              </button>
             </div>
-
-            <p className="text-[11px] text-slate-400 italic">
-              * Giá tiền được tính toán dựa trên bảng giá thực tế niêm yết tại các địa điểm và menu đặc sản của quán.
-            </p>
-
-            <button
-              onClick={() => setShowCostModal(false)}
-              className="w-full bg-slate-900 hover:bg-black text-white font-bold py-3 rounded-xl text-xs transition cursor-pointer"
-            >
-              Đã hiểu & Đóng
-            </button>
           </div>
         </div>
       )}
