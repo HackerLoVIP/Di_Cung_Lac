@@ -13,9 +13,11 @@ export const PlanTrip: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const provinceId = Number(searchParams.get('provinceId')) || 1;
-  const numDays = Number(searchParams.get('days')) || 3;
-  const numNights = Number(searchParams.get('nights')) || 2;
+  const destination = searchParams.get('destination') || '';
+  const startLocation = searchParams.get('start') || '';
+  const provinceId = searchParams.get('provinceId') ? Number(searchParams.get('provinceId')) : undefined;
+  const numDays = Number(searchParams.get('days')) || 2;
+  const numNights = Number(searchParams.get('nights')) || 1;
   const prompt = searchParams.get('prompt') || '';
 
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
@@ -25,20 +27,28 @@ export const PlanTrip: React.FC = () => {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      itineraryAPI.generate(provinceId, numDays, numNights, prompt),
-      axios.get(`/api/ai/weather?province_id=${provinceId}`).then((r) => r.data).catch(() => null),
-    ])
-      .then(([itinData, weatherData]) => {
+    itineraryAPI.generate({
+      destination: destination || undefined,
+      start_location: startLocation || undefined,
+      province_id: provinceId,
+      num_days: numDays,
+      num_nights: numNights,
+      prompt: prompt,
+    })
+      .then((itinData) => {
         setItinerary(itinData);
-        setWeather(weatherData);
+        // Lay thoi tiet theo tinh cua lich trinh
+        const pId = itinData.province?.id || 1;
+        return axios.get(`/api/ai/weather?province_id=${pId}`)
+          .then((r) => setWeather(r.data))
+          .catch(() => null);
       })
       .catch((err) => {
         console.error(err);
-        toast.error('Có lỗi xảy ra khi tạo lịch trình');
+        toast.error('Có lỗi xảy ra khi tạo lịch trình AI');
       })
       .finally(() => setLoading(false));
-  }, [provinceId, numDays, numNights, prompt]);
+  }, [destination, startLocation, provinceId, numDays, numNights, prompt]);
 
   const handleSaveTrip = async () => {
     if (!user) {
@@ -70,8 +80,8 @@ export const PlanTrip: React.FC = () => {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
         <FaSpinner className="text-4xl text-emerald-500 animate-spin" />
-        <h2 className="text-lg font-bold text-slate-700">AI đang phân tích và sắp xếp lịch trình tối ưu...</h2>
-        <p className="text-sm text-slate-400">Đang quét các địa điểm và tính toán chi phí thực tế</p>
+        <h2 className="text-lg font-bold text-slate-700">AI đang phân tích và thiết kế lịch trình {destination ? `tại ${destination}` : ''}...</h2>
+        <p className="text-sm text-slate-400">Đang định vị toạ độ thực tế, tính toán quãng đường và ngân sách ẩm thực</p>
       </div>
     );
   }
@@ -94,10 +104,18 @@ export const PlanTrip: React.FC = () => {
             {itinerary.num_days} Ngày {itinerary.num_nights} Đêm
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{itinerary.title}</h1>
-          <p className="text-sm text-slate-500 flex items-center gap-1">
-            <FaMapMarkerAlt className="text-emerald-500" />
-            Điểm đến: <span className="font-semibold text-slate-700">{itinerary.province.name}</span>
-          </p>
+          <div className="text-sm text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="flex items-center gap-1">
+              <FaMapMarkerAlt className="text-emerald-500" />
+              Điểm đến: <span className="font-semibold text-slate-700">{itinerary.province.name}</span>
+            </p>
+            {startLocation && (
+              <p className="flex items-center gap-1 text-slate-500">
+                <span className="text-blue-500 font-bold">📍</span>
+                Xuất phát: <span className="font-medium text-slate-700">{startLocation}</span>
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

@@ -28,18 +28,163 @@ def estimate_travel_time(distance_km: float) -> int:
     minutes = int(distance_km * 2.4 + 3)
     return max(5, minutes)
 
-def generate_smart_itinerary(
-    province_id: int,
-    num_days: int,
-    num_nights: int,
-    user_prompt: Optional[str],
-    db: Session
-) -> ItineraryResponse:
-    province = db.query(Province).filter(Province.id == province_id).first()
-    if not province:
-        raise ValueError("Khong tim thay tinh thanh yeu cau")
+import re
+import time
+from app.services.gemini_service import generate_dynamic_itinerary_with_gemini
 
-    locations = db.query(Location).filter(Location.province_id == province_id).all()
+def generate_smart_itinerary(
+    province_id: Optional[int] = None,
+    destination: Optional[str] = None,
+    start_location: Optional[str] = None,
+    num_days: int = 3,
+    num_nights: int = 2,
+    user_prompt: Optional[str] = None,
+    db: Session = None
+) -> ItineraryResponse:
+    # 1. Neu co destination nhap tu do hoac province_id khong co trong DB
+    target_dest = (destination or "").strip()
+    
+    # Kiem tra xem co phai yeu cau bat ky diem den moi nao (VD: Tay Ninh, Ha Giang,...)
+    use_ai_dynamic = bool(target_dest)
+    province = None
+
+    if target_dest:
+        province = db.query(Province).filter(Province.name.ilike(f"%{target_dest}%")).first()
+        if province:
+            # Neu tinh da co trong DB nhung khong co du dia diem, van dung AI
+            loc_count = db.query(Location).filter(Location.province_id == province.id).count()
+            if loc_count >= 5:
+                use_ai_dynamic = False
+    elif province_id:
+        province = db.query(Province).filter(Province.id == province_id).first()
+        if province:
+            loc_count = db.query(Location).filter(Location.province_id == province.id).count()
+            if loc_count >= 4:
+                use_ai_dynamic = False
+            else:
+                target_dest = province.name
+                use_ai_dynamic = True
+        else:
+            target_dest = "Vũng Tàu"
+            use_ai_dynamic = True
+
+    # Neu can AI sinh lich trinh dong (VD: Tay Ninh, Phu Quoc, Ben Tre, bat ky diem den nao)
+    if use_ai_dynamic or not province:
+        ai_dest = target_dest or "Tây Ninh"
+        dynamic_data = generate_dynamic_itinerary_with_gemini(
+            destination=ai_dest,
+            num_days=num_days,
+            num_nights=num_nights,
+            user_prompt=user_prompt,
+            start_location=start_location
+        )
+
+        dest_name = dynamic_data.get("destination_name", ai_dest)
+        if not province:
+            province = db.query(Province).filter(Province.name.ilike(f"%{dest_name}%")).first()
+
+        if not province:
+            slug = re.sub(r'[^a-zA-Z0-9]', '-', dest_name.lower()).strip('-')
+            province = Province(
+                name=dest_name,
+                slug=f"{slug}-{int(time.time())}",
+                image_url="https://images.unsplash.com/photo-1528127269322-539801943592?w=800",
+                description=dynamic_data.get("destination_description", f"Khám phá điểm đến {dest_name}"),
+                latitude=dynamic_data.get("center_lat", 11.312),
+                longitude=dynamic_data.get("center_lng", 106.102)
+            )
+            db.add(province)
+            db.commit()
+            db.refresh(province)
+
+        days_result: List[ItineraryDayResponse] = []
+        total_cost = 0
+
+        for day_dict in dynamic_data.get("days", []):
+            day_number = day_dict.get("day_number", 1)
+            day_title = day_dict.get("title", f"Ngày {day_number}: Trải nghiệm {dest_name}")
+            day_items: List[ItineraryItemResponse] = []
+            order = 1
+            prev_loc_coords = None
+
+            for itm in day_dict.get("items", []):
+                loc_name = itm.get("location_name")
+                # Tim hoac luu vao DB de co id chuan
+                db_loc = db.query(Location).filter(
+                    Location.province_id == province.id,
+                    Location.name == loc_name
+                ).first()
+
+                if not db_loc:
+                    db_loc = Location(
+                        province_id=province.id,
+                        name=loc_name,
+                        category=itm.get("category", "tourist_spot"),
+                        description=itm.get("note", ""),
+                        address=itm.get("address", province.name),
+                        latitude=itm.get("latitude", province.latitude),
+                        longitude=itm.get("longitude", province.longitude),
+                        image_url=itm.get("image_url", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800"),
+                        avg_cost_vnd=itm.get("avg_cost_vnd", 50000),
+                        rating=4.8,
+                        tips=itm.get("tips", "Nên kiểm tra thời gian mở cửa và chuẩn bị tư trang"),
+                        transport_info=itm.get("transport_info", "Xe máy hoặc taxi địa phương")
+                    )
+                    db.add(db_loc)
+                    db.flush()
+
+                    for m in itm.get("menu_items", []):
+                        db.add(MenuItem(
+                            location_id=db_loc.id,
+                            name=m.get("name", "Món đặc sản"),
+                            price_vnd=m.get("price_vnd", 30000),
+                            is_signature=True
+                        ))
+                    db.commit()
+                    db.refresh(db_loc)
+
+                # Tinh khoang cach va thoi gian di chuyen
+                cur_coords = (db_loc.latitude, db_loc.longitude)
+                dist = 0.0
+                time_m = 0
+                if prev_loc_coords:
+                    dist = calculate_distance(prev_loc_coords[0], prev_loc_coords[1], cur_coords[0], cur_coords[1])
+                    time_m = estimate_travel_time(dist)
+
+                day_items.append(ItineraryItemResponse(
+                    id=order,
+                    day_number=day_number,
+                    time_slot=itm.get("time_slot", f"0{7 + order}:00"),
+                    order_in_day=order,
+                    note=itm.get("note", db_loc.description),
+                    travel_distance_km=dist,
+                    travel_time_minutes=time_m,
+                    location=LocationResponse.from_orm(db_loc)
+                ))
+                total_cost += db_loc.avg_cost_vnd
+                prev_loc_coords = cur_coords
+                order += 1
+
+            days_result.append(ItineraryDayResponse(
+                day_number=day_number,
+                title=day_title,
+                items=day_items
+            ))
+
+        total_cost += num_days * 120000  # Uoc tinh xang xe & di chuyen
+        return ItineraryResponse(
+            id=None,
+            title=f"Lịch trình du lịch {dest_name} {num_days}N{num_nights}Đ",
+            province=ProvinceResponse.from_orm(province),
+            num_days=num_days,
+            num_nights=num_nights,
+            status="planned",
+            total_cost=total_cost,
+            days=days_result
+        )
+
+    # 2. Truong hop du lieu tinh da co day du trong CSDL (Vung Tau)
+    locations = db.query(Location).filter(Location.province_id == province.id).all()
     if not locations:
         raise ValueError("Chua co du lieu dia diem cho tinh thanh nay")
 

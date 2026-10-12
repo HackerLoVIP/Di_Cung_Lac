@@ -5,7 +5,9 @@ from app.schemas.location import LocationResponse
 from app.schemas.province import ProvinceResponse
 
 class ItineraryGenerateRequest(BaseModel):
-    province_id: int
+    province_id: Optional[int] = None
+    destination: Optional[str] = None
+    start_location: Optional[str] = None
     num_days: int = 3
     num_nights: int = 2
     prompt: Optional[str] = None

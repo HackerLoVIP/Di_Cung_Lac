@@ -25,6 +25,8 @@ def generate_itinerary(req: ItineraryGenerateRequest, db: Session = Depends(get_
     try:
         itinerary = generate_smart_itinerary(
             province_id=req.province_id,
+            destination=req.destination,
+            start_location=req.start_location,
             num_days=req.num_days,
             num_nights=req.num_nights,
             user_prompt=req.prompt,

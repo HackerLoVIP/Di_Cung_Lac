@@ -2,26 +2,58 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { provinceAPI } from '../services/api';
 import { Province } from '../types';
-import { FaMapMarkerAlt, FaCalendarAlt, FaMagic, FaCheckCircle, FaStar } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaCalendarAlt, FaMagic, FaCheckCircle, FaStar, FaCrosshairs, FaCompass } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 export const Home: React.FC = () => {
   const [provinces, setProvinces] = useState<Province[]>([]);
-  const [selectedProvince, setSelectedProvince] = useState<number>(1);
-  const [numDays, setNumDays] = useState<number>(3);
-  const [numNights, setNumNights] = useState<number>(2);
+  const [destination, setDestination] = useState<string>('Tây Ninh');
+  const [startLocation, setStartLocation] = useState<string>('TP. Hồ Chí Minh');
+  const [numDays, setNumDays] = useState<number>(2);
+  const [numNights, setNumNights] = useState<number>(1);
   const [prompt, setPrompt] = useState<string>('');
   const navigate = useNavigate();
+
+  const quickDestinations = [
+    { name: 'Tây Ninh', tag: '⛰️ Nóc nhà Nam Bộ' },
+    { name: 'Vũng Tàu', tag: '🏖️ Biển & Hải sản' },
+    { name: 'Đà Lạt', tag: '🌲 Thành phố sương mù' },
+    { name: 'Phú Quốc', tag: '🏝️ Đảo Ngọc' },
+    { name: 'Bến Tre', tag: '🚣 Miệt vườn sông nước' },
+    { name: 'Cần Thơ', tag: '⛵ Chợ nổi Cái Răng' },
+    { name: 'Hà Giang', tag: '🏍️ Đèo Mã Pí Lèng' },
+  ];
 
   useEffect(() => {
     provinceAPI.getAll().then((data) => {
       setProvinces(data);
-      if (data.length > 0) setSelectedProvince(data[0].id);
     }).catch(console.error);
   }, []);
 
+  const handleGetCurrentLocation = () => {
+    if (navigator.geolocation) {
+      toast('Đang xác định vị trí của bạn...', { icon: '📍' });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setStartLocation(`Vị trí của tôi (${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)})`);
+          toast.success('Đã cập nhật vị trí xuất phát!');
+        },
+        () => {
+          setStartLocation('TP. Hồ Chí Minh');
+          toast.error('Không thể truy cập GPS, đặt mặc định TP. Hồ Chí Minh');
+        }
+      );
+    }
+  };
+
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`/plan?provinceId=${selectedProvince}&days=${numDays}&nights=${numNights}&prompt=${encodeURIComponent(prompt)}`);
+    const dest = destination.trim();
+    if (!dest) {
+      toast.error('Vui lòng nhập điểm đến bạn muốn đi!');
+      return;
+    }
+    navigate(`/plan?destination=${encodeURIComponent(dest)}&start=${encodeURIComponent(startLocation)}&days=${numDays}&nights=${numNights}&prompt=${encodeURIComponent(prompt)}`);
   };
 
   return (
@@ -30,42 +62,89 @@ export const Home: React.FC = () => {
       <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50 via-white to-slate-50 pt-16 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 text-xs sm:text-sm font-bold px-3.5 py-1.5 rounded-full shadow-sm">
-            <span>✨ Ứng dụng AI thông minh</span>
+            <span>✨ Trợ lý AI Du Lịch Siêu Thông Minh</span>
             <span>•</span>
-            <span>Dữ liệu thực tế 100%</span>
+            <span>Điểm đến bất kỳ & Toạ độ thực</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">
             Lên kế hoạch du lịch <br />
             <span className="text-emerald-600 bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-500">
-              Chỉ trong 30 giây
+              Mọi Nẻo Đường Việt Nam
             </span>
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
-            Hệ thống tự động sắp xếp lịch trình chi tiết từ sáng đến tối, tối ưu quãng đường di chuyển và dự toán chi phí minh bạch cho chuyến đi của bạn.
+            Nhập bất kỳ điểm đến nào (Tây Ninh, Đà Lạt, quê bạn,...), AI sẽ tự động phân tích và sinh lịch trình chuẩn từ sáng đến tối kèm bản đồ chỉ đường & thực đơn giá thật!
           </p>
 
           {/* Quick Plan Form */}
           <div className="mt-10 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 max-w-2xl mx-auto text-left">
             <form onSubmit={handleGenerate} className="space-y-4">
+              {/* Điểm đến tự do */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <FaMapMarkerAlt className="text-emerald-500" /> Điểm đến của bạn
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FaMapMarkerAlt className="text-emerald-500 text-sm" /> Điểm đến của bạn (Nhập tự do)
+                  </span>
+                  <span className="text-[11px] font-normal text-emerald-600 lowercase">AI tự tìm địa điểm & đường đi</span>
                 </label>
-                <select
-                  value={selectedProvince}
-                  onChange={(e) => setSelectedProvince(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  {provinces.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    placeholder="Nhập nơi bạn muốn đến (vd: Tây Ninh, Núi Bà Đen, Bến Tre, Đà Lạt, Sapa...)"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 font-bold text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 pl-10"
+                  />
+                  <FaCompass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
+                </div>
+
+                {/* Gợi ý điểm đến phổ biến */}
+                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400 font-medium">Gợi ý nhanh:</span>
+                  {quickDestinations.map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => setDestination(item.name)}
+                      className={`text-xs px-2.5 py-1 rounded-lg font-medium transition cursor-pointer ${
+                        destination.toLowerCase() === item.name.toLowerCase()
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {item.name}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
+              {/* Điểm xuất phát */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FaCrosshairs className="text-blue-500" /> Điểm xuất phát của bạn
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleGetCurrentLocation}
+                    className="text-[11px] text-blue-600 hover:underline font-semibold cursor-pointer"
+                  >
+                    📍 Lấy vị trí GPS hiện tại
+                  </button>
+                </label>
+                <input
+                  type="text"
+                  value={startLocation}
+                  onChange={(e) => setStartLocation(e.target.value)}
+                  placeholder="Vd: TP. Hồ Chí Minh, Bình Dương, Nhà tôi..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Số ngày & số đêm */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -80,7 +159,7 @@ export const Home: React.FC = () => {
                     }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    {[1, 2, 3, 4, 5].map((d) => (
+                    {[1, 2, 3, 4, 5, 7].map((d) => (
                       <option key={d} value={d}>{d} ngày</option>
                     ))}
                   </select>
@@ -95,20 +174,21 @@ export const Home: React.FC = () => {
                     onChange={(e) => setNumNights(Number(e.target.value))}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    {[0, 1, 2, 3, 4].map((n) => (
+                    {[0, 1, 2, 3, 4, 5, 6].map((n) => (
                       <option key={n} value={n}>{n} đêm</option>
                     ))}
                   </select>
                 </div>
               </div>
 
+              {/* Yêu cầu đặc biệt */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Yêu cầu đặc biệt (tùy chọn)
+                  Sở thích / Yêu cầu riêng cho AI (tùy chọn)
                 </label>
                 <input
                   type="text"
-                  placeholder="Vd: Đi cùng gia đình, thích ăn hải sản, ngân sách tiết kiệm..."
+                  placeholder="Vd: Thích ăn bò tơ / hải sản, leo núi, đi chùa tâm linh, ngân sách tiết kiệm..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400"
@@ -120,7 +200,7 @@ export const Home: React.FC = () => {
                 className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
               >
                 <FaMagic />
-                Tự động tạo lịch trình ngay
+                AI Tự động lên lịch trình ngay
               </button>
             </form>
           </div>
