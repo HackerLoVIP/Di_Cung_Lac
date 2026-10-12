@@ -20,6 +20,13 @@ export const PeanutRider: React.FC = () => {
       {/* Vạch đường lộ trình nét đứt chạy ngầm dưới navbar */}
       <div className="absolute bottom-1 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
 
+      {/* LÀN GIÓ VI VU TRÔI QUA (WIND BREEZE STREAKS) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-60">
+        <div className="wind-breeze-line-1 absolute top-2 left-0 w-32 h-[1px] bg-gradient-to-r from-transparent via-sky-300 to-transparent" />
+        <div className="wind-breeze-line-2 absolute top-5 left-0 w-44 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
+        <div className="wind-breeze-line-3 absolute top-8 left-0 w-36 h-[1px] bg-gradient-to-r from-transparent via-sky-200 to-transparent" />
+      </div>
+
       {/* ĐOÀN 3 PHƯƠNG TIỆN: XE ĐẠP (Cuối) -> XE MÁY (Giữa) -> Ô TÔ (Dẫn đầu) */}
       <div
         className="peanut-rider-container absolute bottom-0.5 flex items-end cursor-pointer pointer-events-auto"
@@ -33,8 +40,19 @@ export const PeanutRider: React.FC = () => {
           </div>
         )}
 
+        {/* CỤM GIÓ & LÁ BAY LẢ TÀ SAU ĐUÔI ĐOÀN XE 🍃🍂 */}
+        <div className="relative mr-2 flex flex-col items-center justify-center opacity-85 select-none pointer-events-none">
+          <span className="text-xs animate-leaf-sway inline-block" style={{ animationDelay: '0.2s' }}>🍃</span>
+          <span className="text-[10px] animate-leaf-sway inline-block -mt-1 ml-2" style={{ animationDelay: '0.6s' }}>🍂</span>
+          <svg width="28" height="12" viewBox="0 0 35 15" fill="none" className="opacity-60 -mt-1">
+            <path d="M 2 8 Q 15 2 24 8 Q 28 11 33 6" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </div>
+
         {/* ================= 3. XE ĐẠP DU LỊCH (ĐI CUỐI CÙNG, DÃN CÁCH XA DO TỐC ĐỘ CHẬM) 🚲 ================= */}
         <div className="relative animate-peanut-bounce mr-14 shrink-0" style={{ animationDelay: '0.2s' }}>
+          {/* Làn gió xoáy sau đuôi xe đạp */}
+          <div className="absolute -left-3 top-3 text-[10px] opacity-70 animate-pulse">💨</div>
           <svg
             width="65"
             height="36"
@@ -246,6 +264,12 @@ export const PeanutRider: React.FC = () => {
               <path d="M 68 26 Q 76 27 82 29" stroke="#d97706" strokeWidth="3" strokeLinecap="round" fill="none" />
             </g>
           </svg>
+        </div>
+
+        {/* THỜI TIẾT NẮNG ĐẸP DẪN ĐƯỜNG: MẶT TRỜI MINI & MÂY TRẮNG ☀️☁️ */}
+        <div className="relative ml-1.5 -mb-0.5 flex items-center gap-1 opacity-90 select-none pointer-events-none animate-bounce" style={{ animationDuration: '2.5s' }}>
+          <span className="text-xs filter drop-shadow-xs" title="Trời nắng đẹp đi phượt">☀️</span>
+          <span className="text-[10px] filter drop-shadow-xs -ml-1 opacity-80">☁️</span>
         </div>
       </div>
     </div>

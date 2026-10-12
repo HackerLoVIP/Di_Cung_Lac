@@ -142,5 +142,49 @@ body {
   animation: peanutBounce 0.3s infinite ease-in-out;
 }
 
+/* Hiệu ứng gió vi vu & lá bay */
+@keyframes leafSway {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(12deg);
+  }
+}
+
+.animate-leaf-sway {
+  animation: leafSway 1.8s infinite ease-in-out;
+}
+
+@keyframes windFlow {
+  0% {
+    transform: translateX(-150px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.8;
+  }
+  70% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(calc(100vw + 100px));
+    opacity: 0;
+  }
+}
+
+.wind-breeze-line-1 {
+  animation: windFlow 6s infinite linear;
+}
+
+.wind-breeze-line-2 {
+  animation: windFlow 7.5s infinite linear 2s;
+}
+
+.wind-breeze-line-3 {
+  animation: windFlow 5.5s infinite linear 4s;
+}
+
+
 
 
