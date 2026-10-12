@@ -72,6 +72,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     return () => clearInterval(interval);
   }, [order, onSuccess]);
 
+  // Khoa scroll cua trang khi modal mo (luon chay o top-level)
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleCreateOrder = async (planType: string) => {
@@ -103,20 +115,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     toast.success(`Đã sao chép ${field}!`);
     setTimeout(() => setCopiedField(null), 2000);
   };
-
-  // Khoa scroll cua trang khi modal mo
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
 
   const modalContent = (
     <div 
