@@ -104,71 +104,75 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-slate-900/75 backdrop-blur-md animate-fade-in"
+      onClick={onClose}
+    >
       <div 
-        className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-amber-200/90 my-auto max-h-[92vh] flex flex-col relative z-[100000]"
+        className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-amber-200/90 max-h-[90vh] flex flex-col relative z-[100000] transform transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-amber-100 pb-3.5 mb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center text-xl shadow-xs shrink-0">
+        <div className="flex items-center justify-between border-b border-amber-100 pb-4 mb-5 shrink-0">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center text-2xl shadow-sm shrink-0">
               <FaCrown />
             </div>
             <div>
-              <h3 className="font-black text-slate-900 text-lg leading-tight">Nâng Cấp VIP Travel Pro</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Mở khóa toàn bộ sức mạnh AI & Bản đồ không giới hạn</p>
+              <h3 className="font-black text-slate-900 text-xl leading-tight">Nâng Cấp Gói VIP Travel Pro</h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Mở khóa toàn bộ sức mạnh AI, quản lý chi tiêu & bản đồ không giới hạn</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold text-sm cursor-pointer transition shrink-0"
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center font-bold text-base cursor-pointer transition shrink-0"
+            title="Đóng popup"
           >
             ✕
           </button>
         </div>
 
-        {/* Modal Body with internal scroll if height is restricted */}
-        <div className="overflow-y-auto space-y-4 pr-1 flex-1">
+        {/* Modal Body with smooth internal scroll */}
+        <div className="overflow-y-auto space-y-5 pr-1 flex-1">
           {/* Canh bao neu chua dang nhap */}
           {!user && (
-            <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="bg-amber-50 border border-amber-300 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
               <div className="text-amber-950 font-medium">
-                ⚠️ Bạn chưa đăng nhập. Vui lòng đăng nhập để hệ thống tự động kích hoạt VIP cho tài khoản của bạn.
+                ⚠️ Bạn chưa đăng nhập. Vui lòng đăng nhập để hệ thống tự động kích hoạt VIP cho tài khoản của bạn ngay khi thanh toán xong!
               </div>
               <a
                 href="/login"
-                className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-xs text-center self-end sm:self-auto cursor-pointer"
+                className="px-5 py-2.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-sm text-center self-end sm:self-auto cursor-pointer"
               >
-                Đăng nhập
+                Đăng nhập ngay
               </a>
             </div>
           )}
 
         {/* Step 1: Chon goi nang cap (khi chua tao order) */}
         {!order && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3">
               {/* Goi 7 ngay */}
               <button
                 type="button"
                 onClick={() => setSelectedPlan('vip_trial')}
-                className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
+                className={`p-4 sm:p-5 rounded-2xl border-2 cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_trial'
-                    ? 'border-amber-500 bg-amber-50/90 ring-2 ring-amber-400/80 shadow-md scale-102'
+                    ? 'border-amber-500 bg-amber-50/90 ring-4 ring-amber-300/60 shadow-lg scale-102'
                     : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trải nghiệm</span>
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_trial' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
-                    {selectedPlan === 'vip_trial' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trải nghiệm</span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_trial' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
+                    {selectedPlan === 'vip_trial' && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
                 </div>
-                <div className="py-1">
-                  <p className="text-sm font-black text-slate-900">7 Ngày</p>
-                  <p className="text-base font-black text-amber-900 mt-0.5">19.000 đ</p>
+                <div className="py-2">
+                  <p className="text-base font-black text-slate-900">7 Ngày</p>
+                  <p className="text-lg font-black text-amber-900 mt-0.5">19.000 đ</p>
                 </div>
               </button>
 
@@ -176,24 +180,24 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedPlan('vip_1month')}
-                className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
+                className={`p-4 sm:p-5 rounded-2xl border-2 cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_1month'
-                    ? 'border-amber-500 bg-amber-50/90 ring-2 ring-amber-400/80 shadow-md scale-102'
+                    ? 'border-amber-500 bg-amber-50/90 ring-4 ring-amber-300/60 shadow-lg scale-102'
                     : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-black bg-amber-400 text-amber-950 px-2.5 py-0.5 rounded-full shadow-sm border border-amber-300 z-10 whitespace-nowrap">
+                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-xs font-black bg-amber-400 text-amber-950 px-3 py-0.5 rounded-full shadow-md border border-amber-300 z-10 whitespace-nowrap">
                   Phổ biến nhất 🔥
                 </span>
-                <div className="flex items-center justify-between w-full pt-1.5">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phượt thủ</span>
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_1month' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
-                    {selectedPlan === 'vip_1month' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                <div className="flex items-center justify-between w-full pt-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phượt thủ</span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_1month' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
+                    {selectedPlan === 'vip_1month' && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
                 </div>
-                <div className="py-1">
-                  <p className="text-sm font-black text-slate-900">1 Tháng</p>
-                  <p className="text-base font-black text-amber-900 mt-0.5">49.000 đ</p>
+                <div className="py-2">
+                  <p className="text-base font-black text-slate-900">1 Tháng</p>
+                  <p className="text-lg font-black text-amber-900 mt-0.5">49.000 đ</p>
                 </div>
               </button>
 
@@ -201,46 +205,46 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedPlan('vip_lifetime')}
-                className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
+                className={`p-4 sm:p-5 rounded-2xl border-2 cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_lifetime'
-                    ? 'border-amber-500 bg-amber-50/90 ring-2 ring-amber-400/80 shadow-md scale-102'
+                    ? 'border-amber-500 bg-amber-50/90 ring-4 ring-amber-300/60 shadow-lg scale-102'
                     : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trọn đời</span>
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_lifetime' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
-                    {selectedPlan === 'vip_lifetime' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trọn đời</span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_lifetime' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
+                    {selectedPlan === 'vip_lifetime' && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
                 </div>
-                <div className="py-1">
-                  <p className="text-sm font-black text-slate-900">Vĩnh viễn</p>
-                  <p className="text-base font-black text-amber-900 mt-0.5">149.000 đ</p>
+                <div className="py-2">
+                  <p className="text-base font-black text-slate-900">Vĩnh viễn</p>
+                  <p className="text-lg font-black text-amber-900 mt-0.5">149.000 đ</p>
                 </div>
               </button>
             </div>
 
             {/* Quyen loi VIP */}
-            <div className="pastel-card p-4 rounded-2xl border border-amber-200/60 space-y-2 text-xs">
-              <p className="font-black text-slate-800 text-[11px] uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                <FaBolt className="text-amber-500" /> Đặc quyền thành viên VIP:
+            <div className="pastel-card p-5 rounded-2xl border border-amber-200/80 space-y-3 text-xs sm:text-sm">
+              <p className="font-black text-slate-800 text-xs uppercase tracking-wider text-amber-900 flex items-center gap-2">
+                <FaBolt className="text-amber-500 text-sm" /> Đặc quyền độc quyền của thành viên VIP:
               </p>
-              <ul className="space-y-1.5 text-slate-600">
-                <li className="flex items-center gap-2">
-                  <FaCheckCircle className="text-emerald-500 flex-shrink-0" />
-                  <span>AI tạo lịch trình dài ngày không giới hạn & đề xuất ẩm thực sâu</span>
+              <ul className="space-y-2 text-slate-700">
+                <li className="flex items-center gap-2.5">
+                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-base" />
+                  <span>AI tạo lịch trình dài ngày không giới hạn & đề xuất ẩm thực sâu sát thực tế</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <FaCheckCircle className="text-emerald-500 flex-shrink-0" />
-                  <span>Tự động tối ưu hóa cung đường Google Maps thông minh nhất</span>
+                <li className="flex items-center gap-2.5">
+                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-base" />
+                  <span>Tự động tính toán & tối ưu hóa cung đường Google Maps thông minh nhất</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <FaCheckCircle className="text-emerald-500 flex-shrink-0" />
-                  <span>Xuất file PDF & Lịch trình Offline độ phân giải cao</span>
+                <li className="flex items-center gap-2.5">
+                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-base" />
+                  <span>Quản lý sổ tay chi tiêu nhóm, xuất file PDF & Lịch trình Offline</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <FaCheckCircle className="text-emerald-500 flex-shrink-0" />
-                  <span>Huy hiệu <b>VIP Gold</b> cạnh tên tài khoản</span>
+                <li className="flex items-center gap-2.5">
+                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-base" />
+                  <span>Huy hiệu <b>VIP Gold</b> cạnh tên tài khoản trên toàn bộ chuyến đi</span>
                 </li>
               </ul>
             </div>
@@ -248,10 +252,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <button
               onClick={() => handleCreateOrder(selectedPlan)}
               disabled={loading}
-              className="w-full pastel-yellow-btn py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50"
+              className="w-full pastel-yellow-btn py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 shadow-md cursor-pointer disabled:opacity-50"
             >
-              {loading ? <FaSpinner className="animate-spin" /> : <FaQrcode />}
-              Tạo mã QR SePay & Thanh toán
+              {loading ? <FaSpinner className="animate-spin text-lg" /> : <FaQrcode className="text-lg" />}
+              Tạo mã QR SePay & Thanh toán ngay
             </button>
           </div>
         )}
