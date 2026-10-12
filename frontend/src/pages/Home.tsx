@@ -266,307 +266,267 @@ export const Home: React.FC = () => {
             Nhận diện vị trí hiện tại, chọn ngày đi ngày về cụ thể, tuỳ chọn phong cách & ngân sách. AI sẽ tự động phân tích và tạo lịch trình Google Maps tối ưu 100% dữ liệu thật.
           </p>
 
-          {/* Master Travel Booking Hub Form */}
-          <div className="mt-8 max-w-3xl mx-auto bg-white rounded-3xl shadow-xl border-2 border-amber-200/90 p-5 sm:p-7 text-left space-y-5">
-            <form onSubmit={handleGenerate} className="space-y-5">
-              {/* Dòng 1: Điểm đi (Xuất phát) & Điểm đến (Có nút Đổi chiều Swap) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative">
-                {/* Điểm xuất phát */}
-                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 hover:border-amber-300 transition space-y-1 relative">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <FaCrosshairs className="text-blue-500 text-xs" />
-                      <span>Hiện tại bạn ở đâu? (Điểm đi)</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleGetCurrentLocation}
-                      disabled={isLocating}
-                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md flex items-center gap-1 transition cursor-pointer"
-                      title="Tự động nhận diện toạ độ hiện tại của bạn"
-                    >
-                      {isLocating ? <FaSpinner className="animate-spin text-xs" /> : <span>📍 GPS của tôi</span>}
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={startLocation}
-                    onChange={(e) => setStartLocation(e.target.value)}
-                    placeholder="Nhập nơi bạn đang ở (TP. Hồ Chí Minh, Hà Nội...)"
-                    className="w-full bg-transparent font-black text-slate-900 text-sm sm:text-base focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
-                  />
-                  {/* Quick starting city suggestions */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pt-1 scrollbar-none">
-                    <span className="text-[10px] text-slate-400">Gợi ý:</span>
-                    {quickStartCities.slice(0, 4).map((city) => (
-                      <button
-                        key={city}
-                        type="button"
-                        onClick={() => setStartLocation(city)}
-                        className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition cursor-pointer whitespace-nowrap ${
-                          startLocation === city
-                            ? 'bg-blue-100 text-blue-900 font-bold'
-                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
-                        }`}
-                      >
-                        {city}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Nút Hoán Đổi Chiều (Swap ⇄) trên Desktop */}
-                <button
-                  type="button"
-                  onClick={handleSwap}
-                  className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-slate-500 hover:text-amber-900 border border-slate-200 shadow-md items-center justify-center cursor-pointer transition"
-                  title="Đổi chiều điểm đi và điểm đến"
-                >
-                  <FaExchangeAlt className="text-xs" />
-                </button>
-
-                {/* Điểm đến */}
-                <div className="bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/80 hover:border-amber-300 transition space-y-1">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                    <FaMapMarkerAlt className="text-red-500 text-xs" />
-                    <span>Bạn muốn đi du lịch ở đâu? (Điểm đến)</span>
+          {/* Traveloka / Booking Styled Horizontal Floating Search Bar */}
+          <div className="mt-8 max-w-5xl mx-auto space-y-3">
+            <form
+              onSubmit={handleGenerate}
+              className="bg-white/95 backdrop-blur-md rounded-3xl lg:rounded-full p-2.5 sm:p-2 border border-amber-200/90 shadow-2xl flex flex-col lg:flex-row items-stretch lg:items-center gap-2"
+            >
+              {/* Segment 1: Điểm đi (Xuất phát) */}
+              <div className="flex-1 px-4 py-2 hover:bg-amber-50/50 rounded-2xl lg:rounded-full transition text-left relative">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                    <FaCrosshairs className="text-blue-500" /> Điểm đi
                   </label>
+                  <button
+                    type="button"
+                    onClick={handleGetCurrentLocation}
+                    disabled={isLocating}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-full transition"
+                    title="Tự động nhận diện GPS vị trí thực"
+                  >
+                    {isLocating ? <FaSpinner className="animate-spin text-xs" /> : <span>📍 GPS vị trí</span>}
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={startLocation}
+                  onChange={(e) => setStartLocation(e.target.value)}
+                  placeholder="TP. Hồ Chí Minh..."
+                  className="w-full bg-transparent border-none text-slate-900 font-black text-sm focus:outline-none placeholder:text-slate-400 p-0 mt-0.5"
+                />
+              </div>
+
+              {/* Swap Button (⇄) */}
+              <button
+                type="button"
+                onClick={handleSwap}
+                className="self-center w-7 h-7 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-900 border border-slate-200 flex items-center justify-center cursor-pointer transition shrink-0"
+                title="Đổi chiều xuất phát và điểm đến"
+              >
+                <FaExchangeAlt className="text-[10px] lg:rotate-0 rotate-90" />
+              </button>
+
+              <div className="hidden lg:block w-px h-8 bg-slate-200" />
+
+              {/* Segment 2: Điểm đến */}
+              <div className="flex-1 px-4 py-2 hover:bg-amber-50/50 rounded-2xl lg:rounded-full transition text-left relative">
+                <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                  <FaMapMarkerAlt className="text-red-500" /> Điểm đến
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  placeholder="Bạn muốn đi đâu? (Tây Ninh, Đà Lạt...)"
+                  className="w-full bg-transparent border-none text-slate-900 font-black text-sm focus:outline-none placeholder:text-slate-400 p-0 mt-0.5"
+                />
+              </div>
+
+              <div className="hidden lg:block w-px h-8 bg-slate-200" />
+
+              {/* Segment 3: Ngày đi & Ngày về Cụ thể */}
+              <div className="px-4 py-2 hover:bg-amber-50/50 rounded-2xl lg:rounded-full transition text-left min-w-[240px]">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                    <FaCalendarAlt className="text-emerald-500" /> Thời gian
+                  </label>
+                  <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-2 py-0.2 rounded-full">
+                    {numDays}N{numNights}Đ
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 mt-0.5">
                   <input
-                    type="text"
+                    type="date"
                     required
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    placeholder="Nhập bất kỳ điểm đến nào (Tây Ninh, Vũng Tàu, Đà Lạt...)"
-                    className="w-full bg-transparent font-black text-slate-900 text-sm sm:text-base focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
+                    value={startDate}
+                    min={formatDate(new Date())}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      if (e.target.value > endDate) setEndDate(e.target.value);
+                    }}
+                    className="bg-transparent border-none text-slate-800 font-bold text-xs focus:outline-none cursor-pointer w-28 p-0"
+                    title="Ngày khởi hành"
                   />
-                  {/* Quick destination suggestion chips */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pt-1 scrollbar-none">
-                    <span className="text-[10px] text-amber-800/60">Hot:</span>
-                    {quickDestinations.slice(0, 4).map((d) => (
-                      <button
-                        key={d.name}
-                        type="button"
-                        onClick={() => setDestination(d.name)}
-                        className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition cursor-pointer whitespace-nowrap ${
-                          destination === d.name
-                            ? 'bg-amber-400 text-amber-950 font-bold'
-                            : 'bg-white text-slate-600 hover:bg-amber-100 border border-amber-200/60'
-                        }`}
-                      >
-                        {d.name}
-                      </button>
-                    ))}
-                  </div>
+                  <span className="text-slate-400 text-xs">➔</span>
+                  <input
+                    type="date"
+                    required
+                    value={endDate}
+                    min={startDate || formatDate(new Date())}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="bg-transparent border-none text-slate-800 font-bold text-xs focus:outline-none cursor-pointer w-28 p-0"
+                    title="Ngày trở về"
+                  />
                 </div>
-              </div>
-
-              {/* Dòng 2: Ngày đi & Ngày về Cụ Thể (Calendar Date Picker & Thời gian chuyến đi) */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">
-                      <FaCalendarAlt />
-                    </span>
-                    <div>
-                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Thời gian khởi hành & trở về</h4>
-                      <p className="text-[11px] text-slate-400">Chọn ngày cụ thể để AI tính toán thời tiết và lịch trình chính xác</p>
-                    </div>
-                  </div>
-
-                  {/* Summary Badge */}
-                  <div className="inline-flex items-center gap-2 pastel-yellow-badge px-3 py-1 rounded-xl text-xs font-black self-start sm:self-auto">
-                    <span>✨ {numDays} Ngày {numNights} Đêm</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Ngày bắt đầu */}
-                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      🛫 Ngày khởi hành (Đi)
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={startDate}
-                      min={formatDate(new Date())}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        if (e.target.value > endDate) {
-                          setEndDate(e.target.value);
-                        }
-                      }}
-                      className="w-full bg-transparent font-black text-slate-900 text-sm focus:outline-none cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Ngày kết thúc */}
-                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      🛬 Ngày trở về (Về)
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={endDate}
-                      min={startDate || formatDate(new Date())}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full bg-transparent font-black text-slate-900 text-sm focus:outline-none cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                {/* Quick Date Presets */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                  <span className="text-[11px] text-slate-400 font-medium">Chọn nhanh:</span>
-                  <button
-                    type="button"
-                    onClick={() => applyDatePreset('weekend')}
-                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
-                  >
-                    🌴 Cuối tuần này (T7 - CN)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyDatePreset('3d2n')}
-                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
-                  >
-                    🚀 3 Ngày 2 Đêm tuần sau
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyDatePreset('4d3n')}
-                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
-                  >
-                    🏖️ Kỳ nghỉ 4 Ngày 3 Đêm
-                  </button>
-                </div>
-              </div>
-
-              {/* Dòng 3: Tùy Chọn Chi Tiết (Phong cách, Thành viên, Ngân sách, Phương tiện) */}
-              <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowPreferences(!showPreferences)}
-                  className="w-full p-3.5 bg-slate-50 hover:bg-amber-50/60 flex items-center justify-between transition cursor-pointer text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <FaSlidersH className="text-amber-700 text-xs" />
-                    <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                      Tùy chọn phong cách, thành viên & ngân sách
-                    </span>
-                    <span className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-bold">
-                      Chi tiết hơn
-                    </span>
-                  </div>
-                  {showPreferences ? <FaChevronUp className="text-xs text-slate-400" /> : <FaChevronDown className="text-xs text-slate-400" />}
-                </button>
-
-                {showPreferences && (
-                  <div className="p-4 bg-white space-y-4 border-t border-slate-200 animate-fade-in text-xs">
-                    {/* Phong cách du lịch */}
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-slate-700 block">🏖️ Phong cách chuyến đi:</label>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                        {[
-                          { id: 'adventure', label: 'Phượt khám phá', icon: '🏍️' },
-                          { id: 'relax', label: 'Nghỉ dưỡng & Chill', icon: '🏖️' },
-                          { id: 'foodie', label: 'Ăn sập đặc sản', icon: '🍜' },
-                          { id: 'photo', label: 'Sống ảo check-in', icon: '📸' },
-                          { id: 'family', label: 'Gia đình gắn kết', icon: '👨‍👩‍👧‍👦' },
-                        ].map((s) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => setTravelStyle(s.id)}
-                            className={`p-2 rounded-xl border text-center transition cursor-pointer ${
-                              travelStyle === s.id
-                                ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-2xs'
-                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                            }`}
-                          >
-                            <span className="block text-base mb-0.5">{s.icon}</span>
-                            <span className="text-[11px] block">{s.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Nhóm & Thành viên */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="font-bold text-slate-700 flex items-center gap-1">
-                          <FaUsers className="text-amber-600" /> Thành viên:
-                        </label>
-                        <select
-                          value={groupType}
-                          onChange={(e) => setGroupType(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
-                        >
-                          <option value="solo">🧍 Đi 1 mình (Solo)</option>
-                          <option value="couple">👫 Cặp đôi (2 người)</option>
-                          <option value="friends">👥 Nhóm bạn (3 - 5 người)</option>
-                          <option value="family">👨‍👩‍👧‍👦 Gia đình đông người</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="font-bold text-slate-700 flex items-center gap-1">
-                          <FaCoins className="text-amber-600" /> Mức ngân sách:
-                        </label>
-                        <select
-                          value={budgetLevel}
-                          onChange={(e) => setBudgetLevel(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
-                        >
-                          <option value="budget">💰 Tiết kiệm (&lt; 1.5tr/người)</option>
-                          <option value="standard">💳 Tiêu chuẩn (1.5 - 3tr/người)</option>
-                          <option value="luxury">⭐ Thoải mái (&gt; 3tr/người)</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="font-bold text-slate-700 flex items-center gap-1">
-                          <FaMotorcycle className="text-amber-600" /> Phương tiện ưu tiên:
-                        </label>
-                        <select
-                          value={preferredVehicle}
-                          onChange={(e) => setPreferredVehicle(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
-                        >
-                          <option value="motorcycle">🏍️ Xe máy (Phượt)</option>
-                          <option value="car">🚗 Ô tô riêng / Thuê xe</option>
-                          <option value="bus">🚌 Xe khách / Limousine</option>
-                          <option value="plane">✈️ Máy bay</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Yêu cầu riêng cho AI */}
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block">💡 Ghi chú hoặc sở thích riêng cho AI:</label>
-                      <input
-                        type="text"
-                        value={customPrompt}
-                        onChange={(e) => setCustomPrompt(e.target.value)}
-                        placeholder="Ví dụ: Thích ngắm hoàng hôn, ăn nhiều đồ nướng, muốn ghé chùa chiền..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Action Submit Button */}
               <button
                 type="submit"
-                className="w-full pastel-yellow-btn py-4 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-lg cursor-pointer hover:scale-[1.01] transition-transform"
+                className="pastel-yellow-btn px-6 sm:px-8 py-3.5 rounded-2xl lg:rounded-full font-black text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0 hover:scale-105 transition-transform"
+                title="Khám phá và lập tour tự động"
               >
-                <FaMagic className="text-amber-950 text-lg" />
-                <span>Thiết kế Lịch Trình Chi Tiết Bằng AI</span>
+                <FaMagic className="text-amber-950 text-base" />
+                <span>Lên lịch trình</span>
               </button>
             </form>
+
+            {/* Sub-bar: Gợi ý nhanh + Nút mở rộng tùy chọn phong cách */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs">
+              {/* Quick destination chips */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 font-medium">Khám phá nhanh:</span>
+                {quickDestinations.map((item) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => setDestination(item.name)}
+                    className={`text-[11px] px-3 py-1 rounded-full font-bold transition-all cursor-pointer shadow-2xs ${
+                      destination.toLowerCase() === item.name.toLowerCase()
+                        ? 'pastel-yellow-badge scale-105 border-amber-300'
+                        : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/90'
+                    }`}
+                  >
+                    {item.tag || item.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Nút Toggle tùy chọn chi tiết */}
+              <button
+                type="button"
+                onClick={() => setShowPreferences(!showPreferences)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-amber-50 text-slate-700 font-bold rounded-full border border-slate-200/90 shadow-2xs cursor-pointer transition text-[11px]"
+              >
+                <FaSlidersH className="text-amber-600 text-[10px]" />
+                <span>{showPreferences ? 'Thu gọn tùy chọn' : 'Tùy chọn nâng cao (Phong cách, ngân sách)'}</span>
+                {showPreferences ? <FaChevronUp className="text-[10px] text-slate-400" /> : <FaChevronDown className="text-[10px] text-slate-400" />}
+              </button>
+            </div>
+
+            {/* Quick Presets row */}
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
+              <span className="text-[11px] text-slate-400 font-medium">Lịch gợi ý:</span>
+              <button
+                type="button"
+                onClick={() => applyDatePreset('weekend')}
+                className="px-2.5 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+              >
+                🌴 Cuối tuần này (T7 - CN)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyDatePreset('3d2n')}
+                className="px-2.5 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+              >
+                🚀 3 Ngày 2 Đêm tuần sau
+              </button>
+              <button
+                type="button"
+                onClick={() => applyDatePreset('4d3n')}
+                className="px-2.5 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+              >
+                🏖️ Kỳ nghỉ 4 Ngày 3 Đêm
+              </button>
+            </div>
+
+            {/* Collapsible Advanced Preferences Panel */}
+            {showPreferences && (
+              <div className="bg-white rounded-3xl p-5 border border-amber-200/80 shadow-xl space-y-4 animate-fade-in text-left text-xs max-w-4xl mx-auto">
+                {/* Phong cách du lịch */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">🏖️ Phong cách chuyến đi:</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {[
+                      { id: 'adventure', label: 'Phượt khám phá', icon: '🏍️' },
+                      { id: 'relax', label: 'Nghỉ dưỡng & Chill', icon: '🏖️' },
+                      { id: 'foodie', label: 'Ăn sập đặc sản', icon: '🍜' },
+                      { id: 'photo', label: 'Sống ảo check-in', icon: '📸' },
+                      { id: 'family', label: 'Gia đình gắn kết', icon: '👨‍👩‍👧‍👦' },
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setTravelStyle(s.id)}
+                        className={`p-2 rounded-xl border text-center transition cursor-pointer ${
+                          travelStyle === s.id
+                            ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-2xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="block text-base mb-0.5">{s.icon}</span>
+                        <span className="text-[11px] block">{s.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Nhóm & Thành viên */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 flex items-center gap-1">
+                      <FaUsers className="text-amber-600" /> Thành viên:
+                    </label>
+                    <select
+                      value={groupType}
+                      onChange={(e) => setGroupType(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                    >
+                      <option value="solo">🧍 Đi 1 mình (Solo)</option>
+                      <option value="couple">👫 Cặp đôi (2 người)</option>
+                      <option value="friends">👥 Nhóm bạn (3 - 5 người)</option>
+                      <option value="family">👨‍👩‍👧‍👦 Gia đình đông người</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 flex items-center gap-1">
+                      <FaCoins className="text-amber-600" /> Mức ngân sách:
+                    </label>
+                    <select
+                      value={budgetLevel}
+                      onChange={(e) => setBudgetLevel(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                    >
+                      <option value="budget">💰 Tiết kiệm (&lt; 1.5tr/người)</option>
+                      <option value="standard">💳 Tiêu chuẩn (1.5 - 3tr/người)</option>
+                      <option value="luxury">⭐ Thoải mái (&gt; 3tr/người)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 flex items-center gap-1">
+                      <FaMotorcycle className="text-amber-600" /> Phương tiện ưu tiên:
+                    </label>
+                    <select
+                      value={preferredVehicle}
+                      onChange={(e) => setPreferredVehicle(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                    >
+                      <option value="motorcycle">🏍️ Xe máy (Phượt)</option>
+                      <option value="car">🚗 Ô tô riêng / Thuê xe</option>
+                      <option value="bus">🚌 Xe khách / Limousine</option>
+                      <option value="plane">✈️ Máy bay</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Yêu cầu riêng cho AI */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block">💡 Ghi chú hoặc sở thích riêng cho AI:</label>
+                  <input
+                    type="text"
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="Ví dụ: Thích ngắm hoàng hôn, ăn nhiều đồ nướng, muốn ghé chùa chiền..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
