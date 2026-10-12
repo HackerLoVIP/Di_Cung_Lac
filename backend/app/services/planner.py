@@ -10,6 +10,8 @@ from app.schemas.itinerary import (
 )
 from app.schemas.location import LocationResponse
 from app.schemas.province import ProvinceResponse
+from app.services.location_images import resolve_real_image
+
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Tinh khoang cach thuc te giua 2 toa do GPS theo cong thuc Haversine (km)"""
@@ -115,16 +117,19 @@ def generate_smart_itinerary(
                     Location.name == loc_name
                 ).first()
 
+                loc_cat = itm.get("category", "tourist_spot")
+                real_img = resolve_real_image(loc_name, loc_cat, itm.get("image_url"))
+
                 if not db_loc:
                     db_loc = Location(
                         province_id=province.id,
                         name=loc_name,
-                        category=itm.get("category", "tourist_spot"),
+                        category=loc_cat,
                         description=itm.get("note", ""),
                         address=itm.get("address", province.name),
                         latitude=itm.get("latitude", province.latitude),
                         longitude=itm.get("longitude", province.longitude),
-                        image_url=itm.get("image_url", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800"),
+                        image_url=real_img,
                         avg_cost_vnd=itm.get("avg_cost_vnd", 50000),
                         rating=4.8,
                         tips=itm.get("tips", "Nên kiểm tra thời gian mở cửa và chuẩn bị tư trang"),
@@ -132,6 +137,10 @@ def generate_smart_itinerary(
                     )
                     db.add(db_loc)
                     db.flush()
+                else:
+                    if not db_loc.image_url or "photo-1507525428034" in db_loc.image_url:
+                        db_loc.image_url = real_img
+                        db.commit()
 
                     for m in itm.get("menu_items", []):
                         db.add(MenuItem(

@@ -155,13 +155,29 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
 
                     {/* Anh, Menu va Tips */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                      {item.location?.image_url && (
-                        <div className="md:col-span-1 h-36 rounded-xl overflow-hidden border border-slate-200">
+                      {item.location && (
+                        <div className="md:col-span-1 h-40 rounded-2xl overflow-hidden border border-amber-200/60 relative shadow-2xs group/img">
                           <img
-                            src={item.location.image_url}
+                            src={
+                              item.location.image_url ||
+                              (item.location.category === 'restaurant'
+                                ? 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'
+                                : item.location.category === 'cafe'
+                                ? 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800'
+                                : 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800')
+                            }
                             alt={item.location.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              // Tu dong fallback ve anh phong canh thuc neu link anh bi loi
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800';
+                            }}
+                            className="w-full h-full object-cover group-hover/img:scale-108 transition-transform duration-500"
                           />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
+                          <span className="absolute bottom-2 left-2 text-[10px] font-bold text-white bg-slate-900/70 backdrop-blur-xs px-2 py-0.5 rounded-md">
+                            📷 Ảnh thực tế
+                          </span>
                         </div>
                       )}
 
