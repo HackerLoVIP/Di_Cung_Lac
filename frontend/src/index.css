@@ -115,10 +115,10 @@ body {
   border: 1px solid rgba(254, 240, 138, 0.9) !important;
 }
 
-/* Mascot Đoàn Phượt Bé Lạc 2 Xe Motor Ngang Navbar */
+/* Mascot Đoàn Du Lịch Bé Lạc (Ô tô 🚗 + Xe máy 🛵 + Xe đạp 🚲) */
 @keyframes peanutDrive {
   0% {
-    transform: translateX(-190px);
+    transform: translateX(-270px);
   }
   100% {
     transform: translateX(calc(100vw + 60px));
