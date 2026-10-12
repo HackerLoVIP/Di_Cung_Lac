@@ -394,15 +394,15 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
   return (
     <div
-      className={`relative bg-slate-900 rounded-3xl overflow-hidden shadow-xl border border-slate-700/60 transition-all ${
-        isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'w-full h-[520px] sm:h-[580px]'
+      className={`relative bg-slate-900 rounded-3xl overflow-hidden shadow-xl border border-slate-700/60 transition-all z-0 ${
+        isFullscreen ? 'fixed inset-0 z-[80] rounded-none' : 'w-full h-[520px] sm:h-[580px]'
       }`}
     >
       {/* Ban do Leaflet container */}
-      <div ref={mapContainerRef} className="w-full h-full" />
+      <div ref={mapContainerRef} className="w-full h-full z-0" />
 
       {/* Thanh Control Google Maps & Tien ich phia tren */}
-      <div className="absolute top-3 left-3 right-3 z-[1000] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+      <div className="absolute top-3 left-3 right-3 z-[20] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
         {/* Layer Switcher (Google Maps / Ve tinh / Dia hinh) */}
         <div className="pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl p-1 shadow-lg border border-slate-200 flex items-center gap-1">
           <button
@@ -472,14 +472,14 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
       {/* Loading Bar khi dang tinh toan OSRM */}
       {loadingRoute && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-xl backdrop-blur-sm border border-slate-700">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[20] bg-slate-900/90 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-xl backdrop-blur-sm border border-slate-700">
           <FaSpinner className="animate-spin text-blue-400" />
           <span>Google Route Engine đang vẽ đường cong thực tế...</span>
         </div>
       )}
 
       {/* Thanh Thống Kê Tổng Quãng Đường & Các Chặng Di Chuyển (Grab / Google Navigation Style) */}
-      <div className="absolute bottom-3 left-3 right-3 z-[1000] pointer-events-none">
+      <div className="absolute bottom-3 left-3 right-3 z-[20] pointer-events-none">
         <div className="pointer-events-auto bg-white/95 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl shadow-2xl border border-slate-200/90 space-y-2.5 max-w-4xl mx-auto">
           {/* Tổng quan cự ly */}
           <div className="flex items-center justify-between gap-4">
