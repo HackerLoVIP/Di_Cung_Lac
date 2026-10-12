@@ -105,22 +105,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-slate-900/75 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[999999] bg-slate-950/75 backdrop-blur-md overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-10 flex items-center justify-center animate-fade-in"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-amber-200/90 max-h-[90vh] flex flex-col relative z-[100000] transform transition-all"
+        className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl border border-amber-200/90 relative z-[1000000] flex flex-col my-auto max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-amber-100 pb-4 mb-5 shrink-0">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center text-2xl shadow-sm shrink-0">
+        <div className="flex items-center justify-between border-b border-amber-100 pb-3.5 mb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center text-xl shadow-xs shrink-0">
               <FaCrown />
             </div>
             <div>
-              <h3 className="font-black text-slate-900 text-xl leading-tight">Nâng Cấp Gói VIP Travel Pro</h3>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Mở khóa toàn bộ sức mạnh AI, quản lý chi tiêu & bản đồ không giới hạn</p>
+              <h3 className="font-black text-slate-900 text-lg sm:text-xl leading-tight">Nâng Cấp Gói VIP Travel Pro</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Mở khóa toàn bộ sức mạnh AI, quản lý chi tiêu & bản đồ không giới hạn</p>
             </div>
           </div>
           <button
@@ -134,16 +134,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         </div>
 
         {/* Modal Body with smooth internal scroll */}
-        <div className="overflow-y-auto space-y-5 pr-1 flex-1">
+        <div className="overflow-y-auto space-y-4 pr-1 flex-1">
           {/* Canh bao neu chua dang nhap */}
           {!user && (
-            <div className="bg-amber-50 border border-amber-300 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
+            <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
               <div className="text-amber-950 font-medium">
                 ⚠️ Bạn chưa đăng nhập. Vui lòng đăng nhập để hệ thống tự động kích hoạt VIP cho tài khoản của bạn ngay khi thanh toán xong!
               </div>
               <a
                 href="/login"
-                className="px-5 py-2.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-sm text-center self-end sm:self-auto cursor-pointer"
+                className="px-5 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black rounded-xl whitespace-nowrap shadow-xs text-center self-end sm:self-auto cursor-pointer"
               >
                 Đăng nhập ngay
               </a>
@@ -263,65 +263,72 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         {/* Step 2: Hien thi Ma QR SePay VietQR & Thong tin chuyen khoan */}
         {order && order.status !== 'completed' && (
           <div className="space-y-4">
-            {/* Banner thong tin SePay */}
-            <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-center space-y-1">
-              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Gói đã chọn</span>
-              <p className="text-sm font-black text-slate-900">{order.plan_name}</p>
-              <p className="text-xl font-black text-amber-900">{order.amount.toLocaleString('vi-VN')} VNĐ</p>
-            </div>
-
-            {/* Khung hien thi QR Code SePay VietQR */}
-            <div className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-              <div className="w-52 h-52 bg-white p-2 rounded-2xl shadow-md border border-slate-200 flex items-center justify-center">
-                <img
-                  src={order.qr_url}
-                  alt="SePay VietQR Code"
-                  className="w-full h-full object-contain rounded-xl"
-                />
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                <FaSpinner className="animate-spin text-amber-500 text-xs" />
-                <span>Hệ thống đang tự động lắng nghe giao dịch SePay...</span>
-              </div>
-            </div>
-
-            {/* Chi tiet so tai khoan & noi dung chuyen khoan */}
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-500">Ngân hàng:</span>
-                <span className="font-bold text-slate-800">{order.bank_name}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-slate-500">Số tài khoản:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-slate-900 text-sm">{order.account_no}</span>
-                  <button
-                    onClick={() => handleCopy(order.account_no, 'Số tài khoản')}
-                    className="text-amber-700 hover:text-amber-900 font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <FaCopy /> {copiedField === 'Số tài khoản' ? 'Đã chép' : 'Chép'}
-                  </button>
+            {/* 2-column grid: Left is QR Code, Right is Payment Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
+              {/* Left Column: QR Code */}
+              <div className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5">
+                <div className="w-48 h-48 sm:w-52 sm:h-52 bg-white p-2.5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center">
+                  <img
+                    src={order.qr_url}
+                    alt="SePay VietQR Code"
+                    className="w-full h-full object-contain rounded-xl"
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500 text-center font-medium">
+                  <FaSpinner className="animate-spin text-amber-500 text-xs shrink-0" />
+                  <span>Hệ thống đang tự động lắng nghe giao dịch SePay...</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 border border-amber-300">
-                <span className="text-amber-800 font-medium">Nội dung CK:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-amber-950 font-mono text-sm">{order.transfer_content}</span>
-                  <button
-                    onClick={() => handleCopy(order.transfer_content, 'Nội dung chuyển khoản')}
-                    className="text-amber-800 hover:text-amber-950 font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <FaCopy /> {copiedField === 'Nội dung chuyển khoản' ? 'Đã chép' : 'Chép'}
-                  </button>
+              {/* Right Column: Order & Bank details */}
+              <div className="space-y-3 text-xs">
+                {/* Banner thong tin goi */}
+                <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl text-center space-y-1">
+                  <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Gói đã chọn</span>
+                  <p className="text-base font-black text-slate-900">{order.plan_name}</p>
+                  <p className="text-xl font-black text-amber-900">{order.amount.toLocaleString('vi-VN')} VNĐ</p>
                 </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-500">Ngân hàng:</span>
+                    <span className="font-bold text-slate-800">{order.bank_name}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-slate-500">Số tài khoản:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-slate-900 text-sm">{order.account_no}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(order.account_no, 'Số tài khoản')}
+                        className="text-amber-700 hover:text-amber-900 font-bold flex items-center gap-1 cursor-pointer bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-md"
+                      >
+                        <FaCopy /> {copiedField === 'Số tài khoản' ? 'Đã chép' : 'Chép'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 border border-amber-300">
+                    <span className="text-amber-800 font-medium">Nội dung CK:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-amber-950 font-mono text-sm">{order.transfer_content}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(order.transfer_content, 'Nội dung chuyển khoản')}
+                        className="text-amber-800 hover:text-amber-950 font-bold flex items-center gap-1 cursor-pointer bg-amber-200/80 hover:bg-amber-300 px-2 py-0.5 rounded-md"
+                      >
+                        <FaCopy /> {copiedField === 'Nội dung chuyển khoản' ? 'Đã chép' : 'Chép'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400 italic text-center">
+                  * Quét mã QR trên app ngân hàng để thanh toán nhanh. Sau khi chuyển, hệ thống sẽ kích hoạt VIP trong 3 - 5 giây!
+                </p>
               </div>
             </div>
-
-            <p className="text-[11px] text-slate-400 italic text-center">
-              * Mở ứng dụng ngân hàng của bạn (MBBank, Vietcombank, Techcombank, Momo...) và quét mã QR trên để chuyển khoản. Khi tiền vào SePay, hệ thống tự động kích hoạt VIP trong 3 - 5 giây!
-            </p>
           </div>
         )}
 
