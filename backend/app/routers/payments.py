@@ -11,10 +11,10 @@ from app.services.auth import get_current_user, get_optional_current_user
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 
-# Thong tin tai khoan ngan hang SePay (Demo & Thuc te)
+# Thong tin tai khoan ngan hang SePay (Thuc te)
 SEPAY_BANK_NAME = "MBBank"  # Ngan hang Quan Doi (MB)
-SEPAY_ACCOUNT_NO = "0987654321"  # So tai khoan ngan hang
-SEPAY_ACCOUNT_NAME = "NGUYEN HAI DANG"  # Ten chu tai khoan
+SEPAY_ACCOUNT_NO = "0002059683778"  # So tai khoan ngan hang LE TRONG HIEU
+SEPAY_ACCOUNT_NAME = "LE TRONG HIEU"  # Ten chu tai khoan
 
 PLANS_CONFIG = {
     "vip_trial": {
