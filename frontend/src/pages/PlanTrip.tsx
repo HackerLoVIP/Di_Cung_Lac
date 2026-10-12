@@ -723,21 +723,21 @@ export const PlanTrip: React.FC = () => {
 
             {/* Total Summary Cards */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl text-center">
+              <div className="bg-slate-50 border border-slate-200/90 p-3.5 rounded-2xl text-center shadow-2xs">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Dự toán dự kiến</span>
                 <span className="text-sm sm:text-base font-black text-slate-800">
                   {totalPlanned.toLocaleString('vi-VN')} đ
                 </span>
               </div>
-              <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-center">
-                <span className="text-[10px] uppercase font-bold text-amber-700 block mb-1">Đã chi thực tế</span>
-                <span className="text-sm sm:text-base font-black text-amber-900">
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl text-center shadow-2xs">
+                <span className="text-[10px] uppercase font-bold text-amber-800 block mb-1">Đã chi thực tế</span>
+                <span className="text-sm sm:text-base font-black text-amber-950">
                   {totalActual.toLocaleString('vi-VN')} đ
                 </span>
               </div>
-              <div className={`p-3 rounded-2xl text-center border ${costDiff >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+              <div className={`p-3.5 rounded-2xl text-center border shadow-2xs ${costDiff >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
                 <span className={`text-[10px] uppercase font-bold block mb-1 ${costDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                  {costDiff >= 0 ? 'Còn dư' : 'Bội chi'}
+                  {costDiff >= 0 ? 'Còn dư ngân sách' : 'Bội chi cảnh báo'}
                 </span>
                 <span className={`text-sm sm:text-base font-black ${costDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                   {Math.abs(costDiff).toLocaleString('vi-VN')} đ
@@ -745,10 +745,34 @@ export const PlanTrip: React.FC = () => {
               </div>
             </div>
 
+            {/* Visual Budget Progress Bar */}
+            {totalPlanned > 0 && (
+              <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-2xl space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span>Tiến độ giải ngân kinh phí:</span>
+                  <span className={totalActual > totalPlanned ? 'text-rose-600 font-black' : 'text-amber-800 font-black'}>
+                    {Math.round((totalActual / totalPlanned) * 100)}% ({totalActual.toLocaleString('vi-VN')} / {totalPlanned.toLocaleString('vi-VN')} đ)
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      totalActual > totalPlanned
+                        ? 'bg-rose-500'
+                        : totalActual / totalPlanned > 0.8
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(100, Math.round((totalActual / totalPlanned) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Quick Add Expense Form */}
-            <form onSubmit={handleAddExpense} className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-2">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <FaPlus className="text-emerald-600 text-[10px]" /> Thêm khoản chi mới:
+            <form onSubmit={handleAddExpense} className="bg-amber-50/50 border border-amber-200/80 p-3.5 rounded-2xl space-y-2 shadow-2xs">
+              <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                <FaPlus className="text-amber-700 text-xs" /> Thêm khoản chi mới vào sổ:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                 <input
@@ -756,12 +780,12 @@ export const PlanTrip: React.FC = () => {
                   placeholder="Tên khoản chi (ví dụ: Ăn trưa, Vé cổng, Mua quà...)"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="sm:col-span-6 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                  className="sm:col-span-6 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-amber-400"
                 />
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
-                  className="sm:col-span-3 px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-emerald-500"
+                  className="sm:col-span-3 px-2 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-amber-400 cursor-pointer"
                 >
                   <option value="food">🍜 Ăn uống</option>
                   <option value="cafe">☕ Cà phê</option>
@@ -776,11 +800,11 @@ export const PlanTrip: React.FC = () => {
                   placeholder="Dự kiến (đ)"
                   value={newPlanned}
                   onChange={(e) => setNewPlanned(e.target.value)}
-                  className="sm:col-span-2 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
+                  className="sm:col-span-2 px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-amber-400"
                 />
                 <button
                   type="submit"
-                  className="sm:col-span-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center shadow-sm"
+                  className="sm:col-span-1 pastel-yellow-btn font-black text-xs py-2 rounded-xl transition cursor-pointer flex items-center justify-center shadow-xs hover:scale-105"
                   title="Thêm khoản chi"
                 >
                   <FaPlus />

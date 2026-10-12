@@ -267,25 +267,26 @@ export const Home: React.FC = () => {
           </p>
 
           {/* Traveloka / Booking Styled Horizontal Floating Search Bar */}
-          <div className="mt-8 max-w-5xl mx-auto space-y-3">
+          <div className="mt-8 max-w-5xl mx-auto space-y-3.5">
             <form
               onSubmit={handleGenerate}
-              className="bg-white/95 backdrop-blur-md rounded-3xl lg:rounded-full p-2.5 sm:p-2 border border-amber-200/90 shadow-2xl flex flex-col lg:flex-row items-stretch lg:items-center gap-2"
+              className="bg-white/95 backdrop-blur-md rounded-3xl lg:rounded-full p-2 lg:p-2.5 border-2 border-amber-200/90 shadow-[0_12px_40px_rgba(245,158,11,0.12)] hover:shadow-[0_16px_50px_rgba(245,158,11,0.18)] transition-all flex flex-col lg:flex-row items-stretch lg:items-center gap-1.5 lg:gap-2"
             >
               {/* Segment 1: Điểm đi (Xuất phát) */}
-              <div className="flex-1 px-4 py-2 hover:bg-amber-50/50 rounded-2xl lg:rounded-full transition text-left relative">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
-                    <FaCrosshairs className="text-blue-500" /> Điểm đi
+              <div className="flex-1 px-4 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left relative group">
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-amber-900/80 flex items-center gap-1">
+                    <FaCrosshairs className="text-blue-500 text-xs" />
+                    <span>Điểm đi</span>
                   </label>
                   <button
                     type="button"
                     onClick={handleGetCurrentLocation}
                     disabled={isLocating}
-                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-full transition"
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-full transition shadow-2xs"
                     title="Tự động nhận diện GPS vị trí thực"
                   >
-                    {isLocating ? <FaSpinner className="animate-spin text-xs" /> : <span>📍 GPS vị trí</span>}
+                    {isLocating ? <FaSpinner className="animate-spin text-xs" /> : <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />📍 GPS của tôi</span>}
                   </button>
                 </div>
                 <input
@@ -294,7 +295,7 @@ export const Home: React.FC = () => {
                   value={startLocation}
                   onChange={(e) => setStartLocation(e.target.value)}
                   placeholder="TP. Hồ Chí Minh..."
-                  className="w-full bg-transparent border-none text-slate-900 font-black text-sm focus:outline-none placeholder:text-slate-400 p-0 mt-0.5"
+                  className="w-full bg-transparent border-none text-slate-900 font-extrabold text-sm sm:text-base focus:outline-none placeholder:text-slate-400 placeholder:font-normal p-0"
                 />
               </div>
 
@@ -302,18 +303,19 @@ export const Home: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSwap}
-                className="self-center w-7 h-7 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-900 border border-slate-200 flex items-center justify-center cursor-pointer transition shrink-0"
+                className="self-center w-8 h-8 rounded-full bg-slate-50 hover:bg-amber-200 text-slate-600 hover:text-amber-950 border border-slate-200/80 hover:border-amber-300 shadow-xs flex items-center justify-center cursor-pointer transition-all transform hover:rotate-180 shrink-0"
                 title="Đổi chiều xuất phát và điểm đến"
               >
-                <FaExchangeAlt className="text-[10px] lg:rotate-0 rotate-90" />
+                <FaExchangeAlt className="text-xs lg:rotate-0 rotate-90" />
               </button>
 
-              <div className="hidden lg:block w-px h-8 bg-slate-200" />
+              <div className="hidden lg:block w-px h-10 bg-slate-200/80 self-center" />
 
               {/* Segment 2: Điểm đến */}
-              <div className="flex-1 px-4 py-2 hover:bg-amber-50/50 rounded-2xl lg:rounded-full transition text-left relative">
-                <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
-                  <FaMapMarkerAlt className="text-red-500" /> Điểm đến
+              <div className="flex-1 px-4 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left relative group">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-amber-900/80 flex items-center gap-1 mb-0.5">
+                  <FaMapMarkerAlt className="text-red-500 text-xs" />
+                  <span>Điểm đến</span>
                 </label>
                 <input
                   type="text"
@@ -321,23 +323,24 @@ export const Home: React.FC = () => {
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   placeholder="Bạn muốn đi đâu? (Tây Ninh, Đà Lạt...)"
-                  className="w-full bg-transparent border-none text-slate-900 font-black text-sm focus:outline-none placeholder:text-slate-400 p-0 mt-0.5"
+                  className="w-full bg-transparent border-none text-slate-900 font-extrabold text-sm sm:text-base focus:outline-none placeholder:text-slate-400 placeholder:font-normal p-0"
                 />
               </div>
 
-              <div className="hidden lg:block w-px h-8 bg-slate-200" />
+              <div className="hidden lg:block w-px h-10 bg-slate-200/80 self-center" />
 
               {/* Segment 3: Ngày đi & Ngày về Cụ thể */}
-              <div className="px-4 py-2 hover:bg-amber-50/50 rounded-2xl lg:rounded-full transition text-left min-w-[240px]">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1">
-                    <FaCalendarAlt className="text-emerald-500" /> Thời gian
+              <div className="px-4 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left min-w-[250px]">
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-amber-900/80 flex items-center gap-1">
+                    <FaCalendarAlt className="text-emerald-500 text-xs" />
+                    <span>Thời gian</span>
                   </label>
-                  <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-2 py-0.2 rounded-full">
+                  <span className="text-[10px] font-black text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-300/60">
                     {numDays}N{numNights}Đ
                   </span>
                 </div>
-                <div className="flex items-center gap-1 mt-0.5">
+                <div className="flex items-center gap-1.5">
                   <input
                     type="date"
                     required
@@ -347,17 +350,17 @@ export const Home: React.FC = () => {
                       setStartDate(e.target.value);
                       if (e.target.value > endDate) setEndDate(e.target.value);
                     }}
-                    className="bg-transparent border-none text-slate-800 font-bold text-xs focus:outline-none cursor-pointer w-28 p-0"
+                    className="bg-transparent border-none text-slate-900 font-extrabold text-xs sm:text-sm focus:outline-none cursor-pointer w-28 p-0"
                     title="Ngày khởi hành"
                   />
-                  <span className="text-slate-400 text-xs">➔</span>
+                  <span className="text-amber-500 font-bold text-xs">➔</span>
                   <input
                     type="date"
                     required
                     value={endDate}
                     min={startDate || formatDate(new Date())}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="bg-transparent border-none text-slate-800 font-bold text-xs focus:outline-none cursor-pointer w-28 p-0"
+                    className="bg-transparent border-none text-slate-900 font-extrabold text-xs sm:text-sm focus:outline-none cursor-pointer w-28 p-0"
                     title="Ngày trở về"
                   />
                 </div>
@@ -366,7 +369,7 @@ export const Home: React.FC = () => {
               {/* Action Submit Button */}
               <button
                 type="submit"
-                className="pastel-yellow-btn px-6 sm:px-8 py-3.5 rounded-2xl lg:rounded-full font-black text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0 hover:scale-105 transition-transform"
+                className="pastel-yellow-btn px-7 sm:px-8 py-3.5 sm:py-4 rounded-2xl lg:rounded-full font-black text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-md cursor-pointer shrink-0 hover:scale-105 active:scale-95 transition-all"
                 title="Khám phá và lập tour tự động"
               >
                 <FaMagic className="text-amber-950 text-base" />
@@ -375,10 +378,10 @@ export const Home: React.FC = () => {
             </form>
 
             {/* Sub-bar: Gợi ý nhanh + Nút mở rộng tùy chọn phong cách */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 px-2 text-xs">
               {/* Quick destination chips */}
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-slate-400 font-medium">Khám phá nhanh:</span>
+                <span className="text-[11px] text-slate-500 font-bold">Khám phá nhanh:</span>
                 {quickDestinations.map((item) => (
                   <button
                     key={item.name}
@@ -386,8 +389,8 @@ export const Home: React.FC = () => {
                     onClick={() => setDestination(item.name)}
                     className={`text-[11px] px-3 py-1 rounded-full font-bold transition-all cursor-pointer shadow-2xs ${
                       destination.toLowerCase() === item.name.toLowerCase()
-                        ? 'pastel-yellow-badge scale-105 border-amber-300'
-                        : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/90'
+                        ? 'pastel-yellow-badge scale-105 border-amber-400 font-black'
+                        : 'bg-white hover:bg-amber-100 text-slate-700 border border-slate-200/90'
                     }`}
                   >
                     {item.tag || item.name}
@@ -399,35 +402,35 @@ export const Home: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowPreferences(!showPreferences)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-amber-50 text-slate-700 font-bold rounded-full border border-slate-200/90 shadow-2xs cursor-pointer transition text-[11px]"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-950 font-bold rounded-full border border-slate-200/90 hover:border-amber-300 shadow-2xs cursor-pointer transition text-[11px]"
               >
-                <FaSlidersH className="text-amber-600 text-[10px]" />
-                <span>{showPreferences ? 'Thu gọn tùy chọn' : 'Tùy chọn nâng cao (Phong cách, ngân sách)'}</span>
+                <FaSlidersH className="text-amber-600 text-xs" />
+                <span>{showPreferences ? 'Thu gọn tùy chọn' : 'Tùy chọn chuyên sâu (Phong cách, ngân sách)'}</span>
                 {showPreferences ? <FaChevronUp className="text-[10px] text-slate-400" /> : <FaChevronDown className="text-[10px] text-slate-400" />}
               </button>
             </div>
 
             {/* Quick Presets row */}
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5 text-xs">
               <span className="text-[11px] text-slate-400 font-medium">Lịch gợi ý:</span>
               <button
                 type="button"
                 onClick={() => applyDatePreset('weekend')}
-                className="px-2.5 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+                className="px-3 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
               >
                 🌴 Cuối tuần này (T7 - CN)
               </button>
               <button
                 type="button"
                 onClick={() => applyDatePreset('3d2n')}
-                className="px-2.5 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+                className="px-3 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
               >
                 🚀 3 Ngày 2 Đêm tuần sau
               </button>
               <button
                 type="button"
                 onClick={() => applyDatePreset('4d3n')}
-                className="px-2.5 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
+                className="px-3 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
               >
                 🏖️ Kỳ nghỉ 4 Ngày 3 Đêm
               </button>
@@ -435,10 +438,10 @@ export const Home: React.FC = () => {
 
             {/* Collapsible Advanced Preferences Panel */}
             {showPreferences && (
-              <div className="bg-white rounded-3xl p-5 border border-amber-200/80 shadow-xl space-y-4 animate-fade-in text-left text-xs max-w-4xl mx-auto">
+              <div className="bg-white rounded-3xl p-5 sm:p-6 border-2 border-amber-200/90 shadow-xl space-y-4 animate-fade-in text-left text-xs max-w-4xl mx-auto">
                 {/* Phong cách du lịch */}
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">🏖️ Phong cách chuyến đi:</label>
+                  <label className="font-black text-slate-800 text-xs block">🏖️ Phong cách chuyến đi:</label>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                     {[
                       { id: 'adventure', label: 'Phượt khám phá', icon: '🏍️' },
@@ -451,13 +454,13 @@ export const Home: React.FC = () => {
                         key={s.id}
                         type="button"
                         onClick={() => setTravelStyle(s.id)}
-                        className={`p-2 rounded-xl border text-center transition cursor-pointer ${
+                        className={`p-2.5 rounded-2xl border text-center transition cursor-pointer ${
                           travelStyle === s.id
-                            ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-2xs'
+                            ? 'bg-amber-100 border-amber-400 text-amber-950 font-black shadow-xs ring-2 ring-amber-300/50'
                             : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                         }`}
                       >
-                        <span className="block text-base mb-0.5">{s.icon}</span>
+                        <span className="block text-lg mb-0.5">{s.icon}</span>
                         <span className="text-[11px] block">{s.label}</span>
                       </button>
                     ))}
@@ -473,7 +476,7 @@ export const Home: React.FC = () => {
                     <select
                       value={groupType}
                       onChange={(e) => setGroupType(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-400 cursor-pointer"
                     >
                       <option value="solo">🧍 Đi 1 mình (Solo)</option>
                       <option value="couple">👫 Cặp đôi (2 người)</option>
@@ -489,7 +492,7 @@ export const Home: React.FC = () => {
                     <select
                       value={budgetLevel}
                       onChange={(e) => setBudgetLevel(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-400 cursor-pointer"
                     >
                       <option value="budget">💰 Tiết kiệm (&lt; 1.5tr/người)</option>
                       <option value="standard">💳 Tiêu chuẩn (1.5 - 3tr/người)</option>
@@ -504,7 +507,7 @@ export const Home: React.FC = () => {
                     <select
                       value={preferredVehicle}
                       onChange={(e) => setPreferredVehicle(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-400 cursor-pointer"
                     >
                       <option value="motorcycle">🏍️ Xe máy (Phượt)</option>
                       <option value="car">🚗 Ô tô riêng / Thuê xe</option>
@@ -515,14 +518,14 @@ export const Home: React.FC = () => {
                 </div>
 
                 {/* Yêu cầu riêng cho AI */}
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <label className="font-bold text-slate-700 block">💡 Ghi chú hoặc sở thích riêng cho AI:</label>
                   <input
                     type="text"
                     value={customPrompt}
                     onChange={(e) => setCustomPrompt(e.target.value)}
                     placeholder="Ví dụ: Thích ngắm hoàng hôn, ăn nhiều đồ nướng, muốn ghé chùa chiền..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-amber-400"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-amber-400 focus:bg-white transition"
                   />
                 </div>
               </div>
@@ -531,11 +534,17 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Featured Provinces */}
+      {/* Featured Provinces Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-2 mb-10">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Điểm đến hàng đầu Việt Nam</h2>
-          <p className="text-slate-500 text-sm">Các thành phố du lịch được tích hợp đầy đủ dữ liệu địa điểm xác thực</p>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-3 py-1 rounded-full mb-2">
+              <span>🌟 Điểm đến nổi tiếng</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Khám Phá Thành Phố Du Lịch Hàng Đầu</h2>
+            <p className="text-slate-500 text-sm mt-1">Được tích hợp sẵn toạ độ, món ngon đặc sản và kinh nghiệm du lịch thực tế</p>
+          </div>
+          <span className="text-xs font-bold text-slate-400 hidden sm:block">100% Địa điểm xác thực</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -543,43 +552,83 @@ export const Home: React.FC = () => {
             <div
               key={prov.id}
               onClick={() => navigate(`/explore/${prov.id}`)}
-              className="group relative h-80 rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300 border border-slate-200"
+              className="group relative h-96 rounded-3xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/90 hover:-translate-y-1.5"
             >
               <img
                 src={prov.image_url || 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800'}
                 alt={prov.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent" />
-              <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
-                <span className="text-xs bg-emerald-500/90 text-white font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                  Khám phá ngay
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent" />
+              
+              {/* Top Badges */}
+              <div className="absolute top-5 left-5 right-5 flex items-center justify-between">
+                <span className="text-xs bg-white/90 backdrop-blur-md text-amber-950 font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
+                  ⭐ 4.9 • Điểm đến hot
                 </span>
-                <h3 className="text-2xl font-black">{prov.name}</h3>
-                <p className="text-slate-200 text-xs sm:text-sm line-clamp-2">{prov.description}</p>
+                <span className="text-xs bg-slate-900/60 backdrop-blur-md text-white font-bold px-3 py-1 rounded-full">
+                  Xác thực GPS
+                </span>
+              </div>
+
+              {/* Bottom Details */}
+              <div className="absolute bottom-6 left-6 right-6 text-white space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl sm:text-3xl font-black tracking-tight">{prov.name}</h3>
+                  <div className="w-10 h-10 rounded-full bg-amber-300 text-amber-950 flex items-center justify-center font-bold text-base transform group-hover:translate-x-1 transition-transform shadow-md">
+                    →
+                  </div>
+                </div>
+                <p className="text-slate-200 text-xs sm:text-sm line-clamp-2 leading-relaxed">{prov.description}</p>
+                <div className="flex items-center gap-3 pt-1 text-xs text-amber-200/90 font-bold">
+                  <span>📍 Danh lam thắng cảnh</span>
+                  <span>•</span>
+                  <span>🍜 Ẩm thực nức tiếng</span>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 3 Core Values */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="bg-emerald-900 text-white rounded-3xl p-8 sm:p-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="space-y-2">
-            <div className="text-emerald-400 text-3xl font-black">01</div>
-            <h4 className="font-bold text-lg text-white">Lịch trình thật</h4>
-            <p className="text-emerald-200/80 text-sm">Không tự sinh dữ liệu ảo. Toàn bộ địa chỉ, giá cả, thời gian mở cửa đều được xác thực từ thực tế.</p>
+      {/* 3 Core Values - Modern Pastel Yellow Cards */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div className="text-center space-y-2 mb-8">
+          <span className="text-xs font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-3 py-1 rounded-full">
+            ✨ Cam kết chất lượng
+          </span>
+          <h3 className="text-2xl font-black text-slate-900">Vì Sao Du Khách Chọn Đi Cùng Lạc?</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-gradient-to-br from-white to-amber-50/60 rounded-3xl p-8 border-2 border-amber-200/80 shadow-md hover:shadow-xl transition-all duration-300 space-y-4 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-300/60 text-amber-900 flex items-center justify-center text-2xl font-black shadow-xs">
+              01
+            </div>
+            <h4 className="font-black text-xl text-slate-900">Lịch Trình Thật 100%</h4>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Không tự sinh địa chỉ ảo. Toàn bộ địa danh, quán ăn đặc sản, toạ độ GPS và giờ mở cửa đều được kiểm duyệt xác thực ngoài đời thực.
+            </p>
           </div>
-          <div className="space-y-2">
-            <div className="text-emerald-400 text-3xl font-black">02</div>
-            <h4 className="font-bold text-lg text-white">Trải nghiệm thật</h4>
-            <p className="text-emerald-200/80 text-sm">Lộ trình được tính toán logic theo khung giờ vàng: ngắm bình minh, ăn trưa đặc sản, cafe hoàng hôn.</p>
+
+          <div className="bg-gradient-to-br from-white to-amber-50/60 rounded-3xl p-8 border-2 border-amber-200/80 shadow-md hover:shadow-xl transition-all duration-300 space-y-4 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-300/60 text-amber-900 flex items-center justify-center text-2xl font-black shadow-xs">
+              02
+            </div>
+            <h4 className="font-black text-xl text-slate-900">Khung Giờ Vàng Logic</h4>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Lộ trình được sắp xếp khoa học theo khung giờ vàng: đón bình minh đỉnh núi, ăn trưa đúng quán ngon gốc và ngắm hoàng hôn chill không lo tắc đường.
+            </p>
           </div>
-          <div className="space-y-2">
-            <div className="text-emerald-400 text-3xl font-black">03</div>
-            <h4 className="font-bold text-lg text-white">Đáng tiền thật</h4>
-            <p className="text-emerald-200/80 text-sm">Tự động cộng chi phí dự kiến để bạn chủ động ngân sách và kiểm soát chi tiêu chuyến đi.</p>
+
+          <div className="bg-gradient-to-br from-white to-amber-50/60 rounded-3xl p-8 border-2 border-amber-200/80 shadow-md hover:shadow-xl transition-all duration-300 space-y-4 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-300/60 text-amber-900 flex items-center justify-center text-2xl font-black shadow-xs">
+              03
+            </div>
+            <h4 className="font-black text-xl text-slate-900">Kiểm Soát Chi Tiêu</h4>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Tích hợp sổ tay chi tiêu & dự toán kinh phí thông minh. Giúp bạn chủ động tài chính, đối soát thực tế và không bao giờ bị chi tiêu quá tay.
+            </p>
           </div>
         </div>
       </section>

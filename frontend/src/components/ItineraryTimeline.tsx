@@ -51,6 +51,23 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
     setExpandedKeys(updated);
   };
 
+  const getCategoryBadge = (cat?: string) => {
+    switch (cat) {
+      case 'restaurant':
+        return <span className="bg-amber-100 text-amber-900 text-[10px] px-2 py-0.5 rounded-full font-bold">🍜 Ẩm thực</span>;
+      case 'cafe':
+        return <span className="bg-orange-100 text-orange-900 text-[10px] px-2 py-0.5 rounded-full font-bold">☕ Cà phê</span>;
+      case 'beach':
+        return <span className="bg-blue-100 text-blue-900 text-[10px] px-2 py-0.5 rounded-full font-bold">🏖️ Biển</span>;
+      case 'hotel':
+        return <span className="bg-purple-100 text-purple-900 text-[10px] px-2 py-0.5 rounded-full font-bold">🏨 Khách sạn</span>;
+      case 'shopping':
+        return <span className="bg-pink-100 text-pink-900 text-[10px] px-2 py-0.5 rounded-full font-bold">🛍️ Mua sắm</span>;
+      default:
+        return <span className="bg-emerald-100 text-emerald-900 text-[10px] px-2 py-0.5 rounded-full font-bold">🏛️ Tham quan</span>;
+    }
+  };
+
   // Neu selectedDayNumber === 0, hien thi tat ca ngay, neu khong chi hien thi ngay duoc chon
   const displayDays =
     selectedDayNumber === 0
@@ -167,9 +184,7 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
                             <FaClock className="text-amber-700 text-[10px]" />
                             {item.time_slot}
                           </span>
-                          <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
-                            {item.location?.category}
-                          </span>
+                          {getCategoryBadge(item.location?.category)}
                           <h4 className={`font-black text-slate-900 ${compact ? 'text-xs sm:text-sm' : 'text-lg sm:text-xl'} truncate`}>
                             {item.location?.name}
                           </h4>
