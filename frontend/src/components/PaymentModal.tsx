@@ -134,51 +134,75 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         {/* Step 1: Chon goi nang cap (khi chua tao order) */}
         {!order && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Goi 7 ngay */}
-              <div
+              <button
+                type="button"
                 onClick={() => setSelectedPlan('vip_trial')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all text-center space-y-1.5 ${
+                className={`p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_trial'
-                    ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300 shadow-xs'
-                    : 'border-slate-200 hover:border-amber-200 bg-white'
+                    ? 'border-amber-500 bg-amber-50/90 ring-3 ring-amber-300/80 shadow-sm scale-102'
+                    : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Trải nghiệm</span>
-                <p className="text-xs font-black text-slate-800">7 Ngày</p>
-                <p className="text-sm font-extrabold text-amber-900">19.000 đ</p>
-              </div>
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trải nghiệm</span>
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_trial' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
+                    {selectedPlan === 'vip_trial' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900">7 Ngày</p>
+                  <p className="text-base font-black text-amber-900 mt-0.5">19.000 đ</p>
+                </div>
+              </button>
 
               {/* Goi 30 ngay */}
-              <div
+              <button
+                type="button"
                 onClick={() => setSelectedPlan('vip_1month')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all text-center space-y-1.5 relative ${
+                className={`p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_1month'
-                    ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300 shadow-xs'
-                    : 'border-slate-200 hover:border-amber-200 bg-white'
+                    ? 'border-amber-500 bg-amber-50/90 ring-3 ring-amber-300/80 shadow-sm scale-102'
+                    : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-black bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full shadow-2xs">
-                  Phổ biến nhất
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-black bg-amber-400 text-amber-950 px-2.5 py-0.5 rounded-full shadow-xs border border-amber-300">
+                  Phổ biến nhất 🔥
                 </span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phượt thủ</span>
-                <p className="text-xs font-black text-slate-800">1 Tháng</p>
-                <p className="text-sm font-extrabold text-amber-900">49.000 đ</p>
-              </div>
+                <div className="flex items-center justify-between w-full pt-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phượt thủ</span>
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_1month' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
+                    {selectedPlan === 'vip_1month' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900">1 Tháng</p>
+                  <p className="text-base font-black text-amber-900 mt-0.5">49.000 đ</p>
+                </div>
+              </button>
 
               {/* Goi tron doi */}
-              <div
+              <button
+                type="button"
                 onClick={() => setSelectedPlan('vip_lifetime')}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all text-center space-y-1.5 ${
+                className={`p-4 rounded-2xl border cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
                   selectedPlan === 'vip_lifetime'
-                    ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300 shadow-xs'
-                    : 'border-slate-200 hover:border-amber-200 bg-white'
+                    ? 'border-amber-500 bg-amber-50/90 ring-3 ring-amber-300/80 shadow-sm scale-102'
+                    : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Trọn đời</span>
-                <p className="text-xs font-black text-slate-800">Vĩnh viễn</p>
-                <p className="text-sm font-extrabold text-amber-900">149.000 đ</p>
-              </div>
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trọn đời</span>
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_lifetime' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
+                    {selectedPlan === 'vip_lifetime' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900">Vĩnh viễn</p>
+                  <p className="text-base font-black text-amber-900 mt-0.5">149.000 đ</p>
+                </div>
+              </button>
             </div>
 
             {/* Quyen loi VIP */}
