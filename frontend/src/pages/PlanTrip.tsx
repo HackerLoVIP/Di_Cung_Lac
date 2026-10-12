@@ -4,6 +4,7 @@ import axios from 'axios';
 import { itineraryAPI } from '../services/api';
 import { Itinerary } from '../types';
 import { ItineraryTimeline } from '../components/ItineraryTimeline';
+import { RouteMap } from '../components/RouteMap';
 import { useAuth } from '../contexts/AuthContext';
 import { FaBookmark, FaShareAlt, FaMoneyBillWave, FaMapMarkerAlt, FaCalendarAlt, FaSpinner, FaCloudSun } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -26,6 +27,8 @@ export const PlanTrip: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [showCostModal, setShowCostModal] = useState<boolean>(false);
+  const [selectedDay, setSelectedDay] = useState<number>(1);
+  const [activeLocationId, setActiveLocationId] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -200,10 +203,83 @@ export const PlanTrip: React.FC = () => {
         </p>
       </div>
 
-      {/* Timeline Section */}
+      {/* Day Selector Pills */}
       <div className="space-y-4">
-        <h2 className="text-xl font-extrabold text-slate-800">Lịch trình chi tiết từng ngày</h2>
-        <ItineraryTimeline days={itinerary.days} />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">Bản Đồ Google Maps & Lộ Trình</h2>
+            <p className="text-xs text-slate-500">Chọn ngày để xem bản đồ điều hướng tương tác và các trạm dừng</p>
+          </div>
+
+          {/* Day Navigation Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {itinerary.days.map((day) => (
+              <button
+                key={day.day_number}
+                type="button"
+                onClick={() => {
+                  setSelectedDay(day.day_number);
+                  setActiveLocationId(null);
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  selectedDay === day.day_number
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                }`}
+              >
+                <span>Ngày {day.day_number}</span>
+                <span className="text-[10px] opacity-80">({day.items.length} điểm)</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDay(0);
+                setActiveLocationId(null);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer whitespace-nowrap ${
+                selectedDay === 0
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+              }`}
+            >
+              ✨ Toàn bộ chuyến đi
+            </button>
+          </div>
+        </div>
+
+        {/* Master Google Maps Studio */}
+        <RouteMap
+          items={
+            selectedDay === 0
+              ? itinerary.days.flatMap((d) => d.items)
+              : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || []
+          }
+          dayNumber={selectedDay || 1}
+          activeLocationId={activeLocationId}
+          onSelectLocation={(locId) => setActiveLocationId(locId)}
+        />
+      </div>
+
+      {/* Timeline Section */}
+      <div className="space-y-4 pt-4">
+        <h3 className="text-lg font-black text-slate-800">Chi tiết các điểm dừng chân & Ẩm thực</h3>
+        <ItineraryTimeline
+          days={itinerary.days}
+          selectedDayNumber={selectedDay}
+          activeLocationId={activeLocationId}
+          onSelectLocation={(locId) => setActiveLocationId(locId)}
+          onRemoveItem={(dayNum, itemId) => {
+            const updatedDays = itinerary.days.map((d) => {
+              if (d.day_number === dayNum) {
+                return { ...d, items: d.items.filter((i) => i.id !== itemId) };
+              }
+              return d;
+            });
+            setItinerary({ ...itinerary, days: updatedDays });
+            toast.success('Đã bỏ điểm dừng khỏi lịch trình');
+          }}
+        />
       </div>
 
       {/* Sổ tay chi tiêu Modal */}
