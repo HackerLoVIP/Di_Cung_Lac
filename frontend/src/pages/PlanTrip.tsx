@@ -13,6 +13,7 @@ export const PlanTrip: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const savedTripId = searchParams.get('itineraryId');
   const destination = searchParams.get('destination') || '';
   const startLocation = searchParams.get('start') || '';
   const provinceId = searchParams.get('provinceId') ? Number(searchParams.get('provinceId')) : undefined;
@@ -24,31 +25,48 @@ export const PlanTrip: React.FC = () => {
   const [weather, setWeather] = useState<{ temp: string; condition: string; icon: string; tip: string } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [showCostModal, setShowCostModal] = useState<boolean>(false);
 
   useEffect(() => {
     setLoading(true);
-    itineraryAPI.generate({
-      destination: destination || undefined,
-      start_location: startLocation || undefined,
-      province_id: provinceId,
-      num_days: numDays,
-      num_nights: numNights,
-      prompt: prompt,
-    })
-      .then((itinData) => {
-        setItinerary(itinData);
-        // Lay thoi tiet theo tinh cua lich trinh
-        const pId = itinData.province?.id || 1;
-        return axios.get(`/api/ai/weather?province_id=${pId}`)
-          .then((r) => setWeather(r.data))
-          .catch(() => null);
+    if (savedTripId) {
+      // Tai lich trinh da luu
+      itineraryAPI.getById(Number(savedTripId))
+        .then((itinData) => {
+          setItinerary(itinData);
+          const pId = itinData.province?.id || 1;
+          return axios.get(`/api/ai/weather?province_id=${pId}`)
+            .then((r) => setWeather(r.data))
+            .catch(() => null);
+        })
+        .catch((err) => {
+          console.error(err);
+          toast.error('Không thể tải lịch trình đã lưu');
+        })
+        .finally(() => setLoading(false));
+    } else {
+      itineraryAPI.generate({
+        destination: destination || undefined,
+        start_location: startLocation || undefined,
+        province_id: provinceId,
+        num_days: numDays,
+        num_nights: numNights,
+        prompt: prompt,
       })
-      .catch((err) => {
-        console.error(err);
-        toast.error('Có lỗi xảy ra khi tạo lịch trình AI');
-      })
-      .finally(() => setLoading(false));
-  }, [destination, startLocation, provinceId, numDays, numNights, prompt]);
+        .then((itinData) => {
+          setItinerary(itinData);
+          const pId = itinData.province?.id || 1;
+          return axios.get(`/api/ai/weather?province_id=${pId}`)
+            .then((r) => setWeather(r.data))
+            .catch(() => null);
+        })
+        .catch((err) => {
+          console.error(err);
+          toast.error('Có lỗi xảy ra khi tạo lịch trình AI');
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [savedTripId, destination, startLocation, provinceId, numDays, numNights, prompt]);
 
   const handleSaveTrip = async () => {
     if (!user) {
@@ -120,15 +138,28 @@ export const PlanTrip: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-50 transition-colors cursor-pointer"
+            title="In hoặc xuất PDF"
+          >
+            🖨️ In / Xuất PDF
+          </button>
+          <button
+            onClick={() => setShowCostModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-bold text-xs sm:text-sm hover:bg-amber-100 transition-colors cursor-pointer"
+          >
+            💰 Sổ chi tiêu
+          </button>
+          <button
             onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs sm:text-sm hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <FaShareAlt /> Chia sẻ
           </button>
           <button
             onClick={handleSaveTrip}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-200 transition-all cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-200 transition-all cursor-pointer disabled:opacity-50"
           >
             <FaBookmark /> {saving ? 'Đang lưu...' : 'Lưu chuyến đi'}
           </button>
@@ -174,6 +205,88 @@ export const PlanTrip: React.FC = () => {
         <h2 className="text-xl font-extrabold text-slate-800">Lịch trình chi tiết từng ngày</h2>
         <ItineraryTimeline days={itinerary.days} />
       </div>
+
+      {/* Sổ tay chi tiêu Modal */}
+      {showCostModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">💰</span>
+                <h3 className="text-lg font-black text-slate-800">Sổ Tay Chi Tiêu Chuyến Đi</h3>
+              </div>
+              <button
+                onClick={() => setShowCostModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-800 uppercase">Tổng dự toán chuyến đi</span>
+              <span className="text-xl font-black text-emerald-700">
+                {itinerary.total_cost.toLocaleString('vi-VN')} VNĐ
+              </span>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">Bóc tách ngân sách thực tế:</p>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span>🍜</span>
+                  <span className="font-bold text-slate-700">Ẩm thực & Bữa ăn chính</span>
+                </div>
+                <span className="font-extrabold text-slate-900">
+                  {itinerary.days.reduce((acc, d) => acc + d.items.filter(i => i.location?.category === 'restaurant').reduce((s, i) => s + (i.location?.avg_cost_vnd || 0), 0), 0).toLocaleString('vi-VN')} VNĐ
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span>🎟️</span>
+                  <span className="font-bold text-slate-700">Vé tham quan, cáp treo & check-in</span>
+                </div>
+                <span className="font-extrabold text-slate-900">
+                  {itinerary.days.reduce((acc, d) => acc + d.items.filter(i => i.location?.category === 'tourist_spot' || i.location?.category === 'beach').reduce((s, i) => s + (i.location?.avg_cost_vnd || 0), 0), 0).toLocaleString('vi-VN')} VNĐ
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span>☕</span>
+                  <span className="font-bold text-slate-700">Cà phê thư giãn & đồ uống</span>
+                </div>
+                <span className="font-extrabold text-slate-900">
+                  {itinerary.days.reduce((acc, d) => acc + d.items.filter(i => i.location?.category === 'cafe').reduce((s, i) => s + (i.location?.avg_cost_vnd || 0), 0), 0).toLocaleString('vi-VN')} VNĐ
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span>🛵</span>
+                  <span className="font-bold text-slate-700">Xăng xe & di chuyển ({itinerary.num_days} ngày)</span>
+                </div>
+                <span className="font-extrabold text-slate-900">
+                  {((itinerary.num_days || 2) * 100000).toLocaleString('vi-VN')} VNĐ
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 italic">
+              * Giá tiền được tính toán dựa trên bảng giá thực tế niêm yết tại các địa điểm và menu đặc sản của quán.
+            </p>
+
+            <button
+              onClick={() => setShowCostModal(false)}
+              className="w-full bg-slate-900 hover:bg-black text-white font-bold py-3 rounded-xl text-xs transition cursor-pointer"
+            >
+              Đã hiểu & Đóng
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -41,6 +41,10 @@ lerna-debug.log*
 dist/
 dist-ssr/
 *.local
+*.tsbuildinfo
+dist/
+dist-ssr/
+*.local
 
 # IDE & Editor
 .vscode/
