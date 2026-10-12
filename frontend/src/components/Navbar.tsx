@@ -18,12 +18,12 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-200 group-hover:scale-105 transition-transform">
-              <FaCompass className="text-xl" />
+            <div className="w-10 h-10 rounded-2xl bg-amber-300 text-amber-950 flex items-center justify-center font-bold text-xl shadow-xs group-hover:scale-105 transition-transform">
+              <FaCompass className="text-lg" />
             </div>
             <div>
               <span className="font-extrabold text-xl text-slate-800 tracking-tight">Đi Cùng Lạc</span>
-              <span className="hidden sm:inline-block ml-2 text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">AI Travel</span>
+              <span className="hidden sm:inline-block ml-2 text-xs pastel-yellow-badge font-bold px-2 py-0.5 rounded-full">AI Travel</span>
             </div>
           </Link>
 

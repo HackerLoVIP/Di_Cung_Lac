@@ -283,99 +283,114 @@ export const PlanTrip: React.FC = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Header Info */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Header Info - Pastel Warm Theme */}
+      <div className="pastel-card p-6 sm:p-8 rounded-3xl border border-amber-200/60 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
-            <FaCalendarAlt />
-            {itinerary.num_days} Ngày {itinerary.num_nights} Đêm
+          <div className="inline-flex items-center gap-2 text-xs font-bold pastel-yellow-badge px-3.5 py-1 rounded-full shadow-2xs">
+            <FaCalendarAlt className="text-amber-600" />
+            <span>{itinerary.num_days} Ngày {itinerary.num_nights} Đêm</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{itinerary.title}</h1>
-          <div className="text-sm text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <p className="flex items-center gap-1">
-              <FaMapMarkerAlt className="text-emerald-500" />
-              Điểm đến: <span className="font-semibold text-slate-700">{itinerary.province.name}</span>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{itinerary.title}</h1>
+          <div className="text-xs sm:text-sm text-slate-500 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+            <p className="flex items-center gap-1.5 font-medium text-slate-700">
+              <FaMapMarkerAlt className="text-amber-500" />
+              Điểm đến: <span className="font-bold text-slate-900">{itinerary.province.name}</span>
             </p>
             {startLocation && (
-              <p className="flex items-center gap-1 text-slate-500">
-                <span className="text-blue-500 font-bold">📍</span>
+              <p className="flex items-center gap-1.5 text-slate-500">
+                <span className="text-amber-500 font-bold">📍</span>
                 Xuất phát: <span className="font-medium text-slate-700">{startLocation}</span>
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Action Controls Toolbar */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-50 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer shadow-2xs hover:scale-102"
             title="In hoặc xuất PDF"
           >
-            🖨️ In / Xuất PDF
+            🖨️ Xuất PDF
           </button>
           <button
             onClick={() => setShowCostModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-bold text-xs sm:text-sm hover:bg-amber-100 transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl pastel-yellow-btn font-extrabold text-xs cursor-pointer"
           >
             💰 Sổ chi tiêu ({expenses.length})
           </button>
           <button
             onClick={handleShare}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs sm:text-sm hover:bg-slate-50 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer shadow-2xs hover:scale-102"
           >
             <FaShareAlt /> Chia sẻ
           </button>
           <button
             onClick={handleSaveTrip}
             disabled={saving}
-            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-200 transition-all cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-black text-white font-extrabold text-xs shadow-md transition-all cursor-pointer disabled:opacity-50 hover:scale-102"
           >
-            <FaBookmark /> {saving ? 'Đang lưu...' : 'Lưu chuyến đi'}
+            <FaBookmark className="text-amber-400" /> {saving ? 'Đang lưu...' : 'Lưu chuyến đi'}
           </button>
         </div>
       </div>
 
-      {/* Weather Badge */}
-      {weather && (
-        <div className="bg-sky-50 border border-sky-200/80 p-4 rounded-2xl flex items-center justify-between gap-4 text-xs">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{weather.icon}</span>
+      {/* Mini Info Bar (Weather & Estimated Budget - Pastel Accent) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Budget Card */}
+        <div className="pastel-card p-4 sm:p-5 rounded-2xl border border-amber-200/50 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-100/80 text-amber-800 flex items-center justify-center text-xl shadow-2xs">
+              <FaMoneyBillWave />
+            </div>
             <div>
-              <span className="font-bold text-sky-900 text-sm">{weather.temp} - {weather.condition}</span>
-              <p className="text-sky-700">{weather.tip}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Dự toán ngân sách ước tính</p>
+              <div className="text-xl sm:text-2xl font-black text-slate-900">
+                {itinerary.total_cost.toLocaleString('vi-VN')} đ <span className="text-xs font-normal text-slate-500">/ người</span>
+              </div>
             </div>
           </div>
-          <span className="hidden sm:inline-block bg-sky-200/60 text-sky-800 font-semibold px-2.5 py-1 rounded-lg text-[11px]">
-            Dự báo thông minh
-          </span>
+          <button
+            onClick={() => setShowCostModal(true)}
+            className="text-[11px] font-bold text-amber-800 hover:text-amber-900 underline decoration-amber-300 underline-offset-4 cursor-pointer"
+          >
+            Chi tiết ➔
+          </button>
         </div>
-      )}
 
-      {/* Cost Summary Box */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
-            <FaMoneyBillWave />
-          </div>
-          <div>
-            <h4 className="text-sm font-medium text-emerald-100">Chi phí dự kiến cho chuyến đi</h4>
-            <div className="text-2xl sm:text-3xl font-black tracking-tight">
-              {itinerary.total_cost.toLocaleString('vi-VN')} VNĐ <span className="text-xs font-normal text-emerald-200">/ người</span>
+        {/* Weather Card */}
+        {weather ? (
+          <div className="pastel-card p-4 sm:p-5 rounded-2xl border border-amber-100/80 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="text-3xl">{weather.icon || '☀️'}</div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-slate-900 text-base">{weather.temp}</span>
+                  <span className="text-xs font-bold text-amber-800 bg-amber-100/60 px-2 py-0.5 rounded-md">{weather.condition}</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">{weather.tip}</p>
+              </div>
             </div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thời tiết</span>
           </div>
-        </div>
-        <p className="text-xs text-emerald-100 text-center sm:text-right max-w-xs">
-          Bao gồm vé tham quan, ăn uống 3 bữa, cà phê và chi phí di chuyển cơ bản nội thành.
-        </p>
+        ) : (
+          <div className="pastel-card p-4 sm:p-5 rounded-2xl border border-amber-100/60 flex items-center text-xs text-slate-400">
+            ☀️ Thời tiết tại điểm đến đang lý tưởng cho chuyến đi!
+          </div>
+        )}
       </div>
 
-      {/* Day Selector Pills */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Main Map & Navigation Section */}
+      <div className="pastel-card p-5 sm:p-6 rounded-3xl border border-amber-200/60 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-100/80 pb-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900">Bản Đồ Google Maps & Lộ Trình</h2>
-            <p className="text-xs text-slate-500">Chọn ngày để xem bản đồ điều hướng tương tác và các trạm dừng</p>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+              <span>🗺️ Bản Đồ Lộ Trình Thông Minh</span>
+              <span className="text-[10px] font-bold text-amber-900 bg-amber-200/60 px-2.5 py-0.5 rounded-full">Google Maps Studio</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">Rà chuột hoặc nhấp vào điểm dừng trên bản đồ để xem chi tiết lộ trình</p>
           </div>
 
           {/* Day Navigation Tabs */}
@@ -388,14 +403,14 @@ export const PlanTrip: React.FC = () => {
                   setSelectedDay(day.day_number);
                   setActiveLocationId(null);
                 }}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   selectedDay === day.day_number
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102'
+                    : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/80 hover:border-amber-200'
                 }`}
               >
                 <span>Ngày {day.day_number}</span>
-                <span className="text-[10px] opacity-80">({day.items.length} điểm)</span>
+                <span className="text-[10px] opacity-75">({day.items.length})</span>
               </button>
             ))}
             <button
@@ -404,29 +419,32 @@ export const PlanTrip: React.FC = () => {
                 setSelectedDay(0);
                 setActiveLocationId(null);
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedDay === 0
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                  ? 'bg-amber-400 text-amber-950 font-black shadow-xs scale-102'
+                  : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/80 hover:border-amber-200'
               }`}
             >
-              ✨ Toàn bộ chuyến đi
+              ✨ Toàn chuyến
             </button>
           </div>
         </div>
 
-        {/* Master Google Maps Studio */}
-        <RouteMap
-          items={
-            selectedDay === 0
-              ? itinerary.days.flatMap((d) => d.items)
-              : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || []
-          }
-          dayNumber={selectedDay || 1}
-          activeLocationId={activeLocationId}
-          onSelectLocation={(locId) => setActiveLocationId(locId)}
-        />
+        {/* Master Google Maps Studio Container */}
+        <div className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-2xs">
+          <RouteMap
+            items={
+              selectedDay === 0
+                ? itinerary.days.flatMap((d) => d.items)
+                : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || []
+            }
+            dayNumber={selectedDay || 1}
+            activeLocationId={activeLocationId}
+            onSelectLocation={(locId) => setActiveLocationId(locId)}
+          />
+        </div>
       </div>
+
 
       {/* Timeline Section */}
       <div className="space-y-4 pt-4">

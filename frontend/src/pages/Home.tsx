@@ -59,35 +59,35 @@ export const Home: React.FC = () => {
   return (
     <div className="space-y-16 pb-16">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50 via-white to-slate-50 pt-16 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center space-y-6">
-          <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 text-xs sm:text-sm font-bold px-3.5 py-1.5 rounded-full shadow-sm">
-            <span>✨ Trợ lý AI Du Lịch Siêu Thông Minh</span>
-            <span>•</span>
-            <span>Điểm đến bất kỳ & Toạ độ thực</span>
+      <section className="relative overflow-hidden bg-gradient-to-b from-amber-50/70 via-[#faf9f5] to-[#faf9f5] pt-14 pb-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center space-y-5">
+          <div className="inline-flex items-center gap-2 pastel-yellow-badge text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full shadow-2xs">
+            <span>✨ Trợ lý AI Du Lịch Thông Minh</span>
+            <span className="opacity-40">•</span>
+            <span>Khám phá mọi miền Việt Nam</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">
             Lên kế hoạch du lịch <br />
-            <span className="text-emerald-600 bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-500">
+            <span className="bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600 bg-clip-text text-transparent">
               Mọi Nẻo Đường Việt Nam
             </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
-            Nhập bất kỳ điểm đến nào (Tây Ninh, Đà Lạt, quê bạn,...), AI sẽ tự động phân tích và sinh lịch trình chuẩn từ sáng đến tối kèm bản đồ chỉ đường & thực đơn giá thật!
+          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto font-normal">
+            Nhập bất kỳ điểm đến nào (Tây Ninh, Vũng Tàu, Đà Lạt, quê bạn,...), AI tự động đề xuất lộ trình tối ưu Google Maps kèm bóc tách dự toán chi phí thực tế.
           </p>
 
           {/* Quick Plan Form */}
-          <div className="mt-10 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 max-w-2xl mx-auto text-left">
+          <div className="mt-8 pastel-card p-6 sm:p-8 rounded-3xl border border-amber-200/80 shadow-md max-w-2xl mx-auto text-left">
             <form onSubmit={handleGenerate} className="space-y-4">
               {/* Điểm đến tự do */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <FaMapMarkerAlt className="text-emerald-500 text-sm" /> Điểm đến của bạn (Nhập tự do)
+                    <FaMapMarkerAlt className="text-amber-500 text-sm" /> Điểm đến của bạn (Nhập tự do)
                   </span>
-                  <span className="text-[11px] font-normal text-emerald-600 lowercase">AI tự tìm địa điểm & đường đi</span>
+                  <span className="text-[11px] font-normal text-amber-700 lowercase">AI tự tìm địa điểm & đường đi</span>
                 </label>
                 <div className="relative">
                   <input
@@ -96,7 +96,7 @@ export const Home: React.FC = () => {
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
                     placeholder="Nhập nơi bạn muốn đến (vd: Tây Ninh, Núi Bà Đen, Bến Tre, Đà Lạt, Sapa...)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 font-bold text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 pl-10"
+                    className="w-full bg-slate-50/70 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-800 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 pl-10 transition"
                   />
                   <FaCompass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base" />
                 </div>
@@ -109,10 +109,10 @@ export const Home: React.FC = () => {
                       key={item.name}
                       type="button"
                       onClick={() => setDestination(item.name)}
-                      className={`text-xs px-2.5 py-1 rounded-lg font-medium transition cursor-pointer ${
+                      className={`text-xs px-2.5 py-1 rounded-xl font-medium transition-all cursor-pointer ${
                         destination.toLowerCase() === item.name.toLowerCase()
-                          ? 'bg-emerald-600 text-white shadow-sm'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          ? 'pastel-yellow-badge font-bold shadow-2xs scale-105'
+                          : 'bg-white hover:bg-amber-50 text-slate-600 border border-slate-200/80'
                       }`}
                     >
                       {item.name}
@@ -197,9 +197,9 @@ export const Home: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
+                className="w-full mt-2 pastel-yellow-btn font-black py-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
               >
-                <FaMagic />
+                <FaMagic className="text-amber-800" />
                 AI Tự động lên lịch trình ngay
               </button>
             </form>
