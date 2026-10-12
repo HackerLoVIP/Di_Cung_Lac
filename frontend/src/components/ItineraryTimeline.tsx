@@ -182,6 +182,14 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
                       )}
 
                       <div className={`space-y-3 ${item.location?.image_url ? 'md:col-span-2' : 'md:col-span-3'}`}>
+                        {/* Trải nghiệm / Hoạt động tại điểm dừng */}
+                        {item.note && (
+                          <div className="bg-amber-50/70 border border-amber-200/70 p-2.5 rounded-xl text-xs text-amber-950 flex items-start gap-2">
+                            <span className="font-bold text-amber-800 flex-shrink-0">📝 Trải nghiệm:</span>
+                            <span className="font-medium leading-relaxed text-slate-700">{item.note}</span>
+                          </div>
+                        )}
+
                         {/* Menu mon an thuc te */}
                         {item.location?.menu_items && item.location.menu_items.length > 0 && (
                           <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
