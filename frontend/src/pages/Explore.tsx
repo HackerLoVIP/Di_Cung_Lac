@@ -93,14 +93,24 @@ export const Explore: React.FC = () => {
             </div>
 
             {/* Bottom Hero Info */}
-            <div className="space-y-2">
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight">{province.name}</h1>
-              <p className="text-slate-200 text-xs sm:text-sm max-w-2xl leading-relaxed">{province.description}</p>
-              <div className="flex items-center gap-4 pt-1 text-xs text-amber-300 font-bold">
-                <span>📍 {locations.length} Địa điểm trong cơ sở dữ liệu</span>
-                <span>•</span>
-                <span>⭐ 100% Xác thực GPS</span>
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="space-y-2">
+                <h1 className="text-3xl sm:text-5xl font-black tracking-tight">{province.name}</h1>
+                <p className="text-slate-200 text-xs sm:text-sm max-w-2xl leading-relaxed">{province.description}</p>
+                <div className="flex items-center gap-4 pt-1 text-xs text-amber-300 font-bold">
+                  <span>📍 {locations.length} Địa điểm thực tế</span>
+                  <span>•</span>
+                  <span>⭐ 100% Xác thực GPS</span>
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => navigate(`/plan?destination=${encodeURIComponent(province.name)}&provinceId=${province.id}&days=2&nights=1`)}
+                className="pastel-yellow-btn px-5 py-3 rounded-2xl font-black text-xs sm:text-sm shadow-xl flex items-center gap-2 cursor-pointer shrink-0 hover:scale-105 transition-transform self-start sm:self-end"
+              >
+                <span>✨ Lập lịch trình AI đi {province.name}</span>
+              </button>
             </div>
           </div>
         </div>

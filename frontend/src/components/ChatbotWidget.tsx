@@ -1,20 +1,31 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { FaRobot, FaTimes, FaPaperPlane, FaKey, FaCog } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 export const ChatbotWidget: React.FC = () => {
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [showKeySetting, setShowKeySetting] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [messages, setMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string }>>([
     {
       sender: 'ai',
-      text: 'Chào bạn! Mình là Trợ lý AI Đi Cùng Lạc kết nối trực tiếp với Google Gemini 2.0 / 1.5 Flash. Bạn có thể hỏi mình bất cứ điều gì về ẩm thực, bãi tắm, chi phí hay mẹo du lịch Vũng Tàu nhé!'
+      text: 'Chào bạn! Mình là Trợ lý AI Đi Cùng Lạc (kết nối Google Gemini 2.5 Flash Multi-Key). Bạn cần tư vấn lịch trình, quán ăn ngon, điểm check-in hay dự toán chi phí tại tỉnh thành nào cứ hỏi mình nhé!'
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const getActiveProvinceId = () => {
+    const match = location.pathname.match(/\/explore\/(\d+)/);
+    if (match) return Number(match[1]);
+    const params = new URLSearchParams(location.search);
+    const pId = params.get('provinceId');
+    if (pId) return Number(pId);
+    return 1;
+  };
 
   const handleSaveKey = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +46,7 @@ export const ChatbotWidget: React.FC = () => {
     try {
       const res = await axios.post('/api/ai/chat', {
         message: userMsg,
-        province_id: 1,
+        province_id: getActiveProvinceId(),
         api_key: apiKey.trim() || undefined,
       });
       setMessages((prev) => [...prev, { sender: 'ai', text: res.data.reply }]);

@@ -293,8 +293,25 @@ export const PlanTrip: React.FC = () => {
 
     setSaving(true);
     try {
-      await itineraryAPI.save(itinerary);
-      toast.success('Đã lưu lịch trình thành công!');
+      const savedItin = await itineraryAPI.save(itinerary);
+      // Đồng bộ toàn bộ khoản chi trong Sổ chi tiêu vào DB cho lịch trình vừa lưu
+      if (savedItin?.id && expenses.length > 0) {
+        const unsavedExpenses = expenses.filter((e) => !e.id);
+        await Promise.all(
+          unsavedExpenses.map((e) =>
+            expenseAPI
+              .create({
+                itinerary_id: savedItin.id!,
+                title: e.title,
+                category: e.category,
+                planned_cost: e.planned_cost || 0,
+                actual_cost: e.actual_cost || 0,
+              })
+              .catch(() => null)
+          )
+        );
+      }
+      toast.success('Đã lưu lịch trình và sổ chi tiêu thành công!');
       navigate('/my-trips');
     } catch (e) {
       console.error(e);
@@ -616,6 +633,8 @@ export const PlanTrip: React.FC = () => {
             activeLocationId={activeLocationId}
             onSelectLocation={(locId) => setActiveLocationId(locId)}
             compact={true}
+            categoryFilter={selectedCategoryFilter}
+            transitMode={transitMode}
             onRemoveItem={(dayNum, itemId) => {
               const updatedDays = itinerary.days.map((d) => {
                 if (d.day_number === dayNum) {
@@ -637,11 +656,17 @@ export const PlanTrip: React.FC = () => {
         }`}
       >
         <RouteMap
-          items={
-            selectedDay === 0
-              ? itinerary.days.flatMap((d) => d.items)
-              : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || []
-          }
+          items={(selectedDay === 0
+            ? itinerary.days.flatMap((d) => d.items)
+            : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || []
+          ).filter((it) => {
+            if (!selectedCategoryFilter) return true;
+            const cat = it.location?.category || 'tourist_spot';
+            if (selectedCategoryFilter === 'tourist_spot') {
+              return cat === 'tourist_spot' || cat === 'beach' || cat === 'shopping';
+            }
+            return cat === selectedCategoryFilter;
+          })}
           dayNumber={selectedDay || 1}
           activeLocationId={activeLocationId}
           onSelectLocation={(locId) => setActiveLocationId(locId)}

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { ItineraryDay, ItineraryItem } from '../types';
+import { ItineraryDay } from '../types';
 import {
   FaClock,
   FaMapMarkerAlt,
   FaMotorcycle,
+  FaCar,
+  FaWalking,
   FaLightbulb,
   FaUtensils,
   FaParking,
   FaTrash,
   FaDirections,
-  FaChevronDown,
-  FaChevronUp
+  FaChevronDown
 } from 'react-icons/fa';
 
 interface ItineraryTimelineProps {
@@ -20,6 +21,8 @@ interface ItineraryTimelineProps {
   onSelectLocation?: (locationId: number) => void;
   onRemoveItem?: (dayNumber: number, itemId: number) => void;
   compact?: boolean;
+  categoryFilter?: string | null;
+  transitMode?: 'motorcycle' | 'car' | 'walking';
 }
 
 export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
@@ -29,6 +32,8 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
   onSelectLocation,
   onRemoveItem,
   compact = false,
+  categoryFilter = null,
+  transitMode = 'motorcycle',
 }) => {
   // Trạng thái thu gọn/mở rộng từng điểm dừng
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
@@ -69,10 +74,30 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
   };
 
   // Neu selectedDayNumber === 0, hien thi tat ca ngay, neu khong chi hien thi ngay duoc chon
-  const displayDays =
+  const rawDays =
     selectedDayNumber === 0
       ? days
       : days.filter((d) => d.day_number === selectedDayNumber);
+
+  const displayDays = rawDays.map((d) => ({
+    ...d,
+    items: categoryFilter
+      ? d.items.filter((it) => {
+          const cat = it.location?.category || 'tourist_spot';
+          if (categoryFilter === 'tourist_spot') {
+            return cat === 'tourist_spot' || cat === 'beach' || cat === 'shopping';
+          }
+          return cat === categoryFilter;
+        })
+      : d.items,
+  }));
+
+  const getAdjustedTravelMinutes = (baseMinutes?: number) => {
+    const base = baseMinutes || 5;
+    if (transitMode === 'car') return Math.max(5, Math.round(base * 1.25));
+    if (transitMode === 'walking') return Math.max(10, Math.round(base * 4.5));
+    return base;
+  };
 
   return (
     <div className={compact ? 'space-y-4' : 'space-y-10'}>
@@ -159,9 +184,15 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
                   {/* Đoạn hiển thị di chuyển từ điểm trước đó */}
                   {item.travel_distance_km !== undefined && item.travel_distance_km > 0 && (
                     <div className="inline-flex items-center gap-1.5 pastel-yellow-badge px-2.5 py-1 rounded-lg text-[11px] font-semibold shadow-2xs">
-                      <FaMotorcycle className="text-amber-700 text-xs" />
+                      {transitMode === 'car' ? (
+                        <FaCar className="text-amber-700 text-xs" />
+                      ) : transitMode === 'walking' ? (
+                        <FaWalking className="text-amber-700 text-xs" />
+                      ) : (
+                        <FaMotorcycle className="text-amber-700 text-xs" />
+                      )}
                       <span>
-                        Chặng: <b>{item.travel_distance_km} km</b> (~{item.travel_time_minutes}p)
+                        Chặng: <b>{item.travel_distance_km} km</b> (~{getAdjustedTravelMinutes(item.travel_time_minutes)}p)
                       </span>
                     </div>
                   )}

@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Location } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import {
   FaStar,
   FaMapMarkerAlt,
-  FaClock,
   FaHeart,
   FaDirections,
   FaUtensils,
   FaLightbulb,
   FaParking,
-  FaCommentAlt
+  FaCommentAlt,
+  FaMagic
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -21,6 +22,7 @@ interface LocationCardProps {
 
 export const LocationCard: React.FC<LocationCardProps> = ({ location }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isSaved, setIsSaved] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -305,16 +307,33 @@ export const LocationCard: React.FC<LocationCardProps> = ({ location }) => {
               </div>
             </div>
 
-            {/* Nut Mo Google Maps Native */}
-            <div className="flex justify-between items-center pt-2">
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}&travelmode=driving`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md transition"
-              >
-                <FaDirections /> Chỉ đường bằng Google Maps
-              </a>
+            {/* Nut Mo Google Maps Native & Lap lich trinh AI */}
+            <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}&travelmode=driving`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md transition"
+                >
+                  <FaDirections /> Chỉ đường Google Maps
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    const provGuess = location.province_name || location.address?.split(',').pop()?.trim() || '';
+                    navigate(
+                      `/plan?provinceId=${location.province_id}&destination=${encodeURIComponent(provGuess)}&prompt=${encodeURIComponent(
+                        `Ưu tiên ghé thăm và trải nghiệm tại ${location.name}`
+                      )}`
+                    );
+                  }}
+                  className="inline-flex items-center gap-1.5 pastel-yellow-btn font-black px-4 py-2 rounded-xl text-xs shadow-md transition cursor-pointer"
+                >
+                  <FaMagic className="text-amber-900" /> Lên lịch trình có điểm này
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowDetailModal(false)}
