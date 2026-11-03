@@ -16,7 +16,7 @@ from app.schemas.itinerary import (
 from app.schemas.location import LocationResponse
 from app.schemas.province import ProvinceResponse
 from app.services.auth import get_current_user
-from app.services.planner import generate_smart_itinerary
+from app.services.planner import generate_smart_itinerary, calculate_distance, estimate_travel_time
 
 router = APIRouter(prefix="/api/itineraries", tags=["Itineraries"])
 
@@ -81,6 +81,10 @@ def get_my_trips(
     trips = db.query(Itinerary).filter(Itinerary.user_id == current_user.id).order_by(Itinerary.created_at.desc()).all()
     results = []
     for t in trips:
+        trip_cost = (t.num_days or 1) * 100000
+        for item in t.items:
+            if item.location and item.location.avg_cost_vnd:
+                trip_cost += item.location.avg_cost_vnd
         results.append({
             "id": t.id,
             "title": t.title,
@@ -88,6 +92,8 @@ def get_my_trips(
             "province_image": t.province.image_url if t.province else "",
             "num_days": t.num_days,
             "num_nights": t.num_nights,
+            "total_cost": trip_cost,
+            "stops_count": len(t.items),
             "status": t.status,
             "created_at": t.created_at,
             "share_code": t.share_code
@@ -103,7 +109,8 @@ def get_itinerary_detail(itinerary_id: int, db: Session = Depends(get_db)):
     days_dict = {}
     total_cost = 0
 
-    for item in itinerary.items:
+    sorted_items = sorted(itinerary.items, key=lambda x: (x.day_number, x.order_in_day))
+    for item in sorted_items:
         d = item.day_number
         if d not in days_dict:
             days_dict[d] = []
@@ -111,7 +118,7 @@ def get_itinerary_detail(itinerary_id: int, db: Session = Depends(get_db)):
         loc_res = LocationResponse.from_orm(loc) if loc else None
         if loc:
             total_cost += loc.avg_cost_vnd
-            
+
         days_dict[d].append({
             "id": item.id,
             "day_number": item.day_number,
@@ -122,11 +129,27 @@ def get_itinerary_detail(itinerary_id: int, db: Session = Depends(get_db)):
         })
 
     days_list = []
+    prov_name = itinerary.province.name if itinerary.province else "Điểm đến"
     for d_num in sorted(days_dict.keys()):
+        day_items = days_dict[d_num]
+        prev_coords = None
+        for itm in day_items:
+            loc_obj = itm.get("location")
+            dist = 0.0
+            time_m = 0
+            if loc_obj and prev_coords:
+                dist = calculate_distance(prev_coords[0], prev_coords[1], loc_obj.latitude, loc_obj.longitude)
+                time_m = estimate_travel_time(dist)
+            itm["travel_distance_km"] = dist
+            itm["travel_time_minutes"] = time_m
+            if loc_obj:
+                prev_coords = (loc_obj.latitude, loc_obj.longitude)
+
+        first_spot = day_items[0]["location"].name if (day_items and day_items[0].get("location")) else prov_name
         days_list.append({
             "day_number": d_num,
-            "title": f"Ngày {d_num}",
-            "items": days_dict[d_num]
+            "title": f"Ngày {d_num}: Khám phá {first_spot} & Trải nghiệm {prov_name}",
+            "items": day_items
         })
 
     total_cost += itinerary.num_days * 100000
