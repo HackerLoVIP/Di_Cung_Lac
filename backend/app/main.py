@@ -2,9 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.routers import auth, provinces, locations, itineraries, reviews, wishlists, ai, admin, expenses, payments
+from app.seed.seed_data import run_seed
 
-# Khoi tao bang du lieu neu chua ton tai
+# Khoi tao bang du lieu va nap du lieu thuc te chuan xac
 Base.metadata.create_all(bind=engine)
+try:
+    run_seed()
+except Exception as e:
+    print(f"[WARN] Startup seed check: {e}")
 
 app = FastAPI(
     title="Đi Cùng Lạc API",
