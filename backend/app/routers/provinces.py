@@ -26,7 +26,12 @@ def get_locations_by_province(
     category: Optional[str] = Query(None, description="Loc theo danh muc"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Location).filter(Location.province_id == province_id)
+    query = db.query(Location).filter(
+        Location.province_id == province_id,
+        ~Location.name.ilike("Điểm xuất phát%"),
+        ~Location.name.ilike("Xuất phát từ%"),
+        ~Location.name.ilike("Khởi hành về%")
+    )
     if category and category != "all":
         query = query.filter(Location.category == category)
     return query.all()

@@ -32,6 +32,7 @@ export const Home: React.FC = () => {
   // Destination & Departure State
   const [destination, setDestination] = useState<string>('Tây Ninh');
   const [startLocation, setStartLocation] = useState<string>('TP. Hồ Chí Minh');
+  const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isLocating, setIsLocating] = useState<boolean>(false);
 
   // Date management: Departure & Return dates
@@ -140,18 +141,19 @@ export const Home: React.FC = () => {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
+        setStartCoords({ lat: latitude, lng: longitude });
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14`);
           if (res.ok) {
             const data = await res.json();
             const addr = data.address;
-            const detectedCity = addr?.city || addr?.state || addr?.county || addr?.province;
-            if (detectedCity) {
-              setStartLocation(detectedCity);
-              toast.success(`Đã xác định vị trí hiện tại: ${detectedCity}!`);
-              setIsLocating(false);
-              return;
-            }
+            const suburb = addr?.suburb || addr?.city_district || addr?.quarter || '';
+            const detectedCity = addr?.city || addr?.state || addr?.county || addr?.province || 'TP. Hồ Chí Minh';
+            const fullLabel = suburb ? `${suburb}, ${detectedCity}` : detectedCity;
+            setStartLocation(fullLabel);
+            toast.success(`Đã định vị GPS vị trí của bạn: ${fullLabel}!`);
+            setIsLocating(false);
+            return;
           }
         } catch {
           // fallback
@@ -167,7 +169,7 @@ export const Home: React.FC = () => {
         } else {
           setStartLocation('TP. Hồ Chí Minh');
         }
-        toast.success('Đã cập nhật vị trí xuất phát!');
+        toast.success('Đã cập nhật tọa độ GPS xuất phát!');
         setIsLocating(false);
       },
       () => {
@@ -240,6 +242,10 @@ export const Home: React.FC = () => {
       nights: String(numNights),
       prompt: fullPrompt
     });
+    if (startCoords) {
+      params.set('startLat', String(startCoords.lat));
+      params.set('startLng', String(startCoords.lng));
+    }
 
     navigate(`/plan?${params.toString()}`);
   };

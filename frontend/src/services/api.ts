@@ -65,6 +65,8 @@ export const itineraryAPI = {
       province_id?: number;
       destination?: string;
       start_location?: string;
+      start_lat?: number;
+      start_lng?: number;
       num_days?: number;
       num_nights?: number;
       prompt?: string;

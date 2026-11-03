@@ -44,6 +44,8 @@ export const PlanTrip: React.FC = () => {
   const savedTripId = searchParams.get('itineraryId');
   const destination = searchParams.get('destination') || '';
   const startLocation = searchParams.get('start') || '';
+  const startLat = searchParams.get('startLat') ? Number(searchParams.get('startLat')) : undefined;
+  const startLng = searchParams.get('startLng') ? Number(searchParams.get('startLng')) : undefined;
   const provinceId = searchParams.get('provinceId') ? Number(searchParams.get('provinceId')) : undefined;
   const numDays = Number(searchParams.get('days')) || 2;
   const numNights = Number(searchParams.get('nights')) || 1;
@@ -245,6 +247,8 @@ export const PlanTrip: React.FC = () => {
       itineraryAPI.generate({
         destination: destination || undefined,
         start_location: startLocation || undefined,
+        start_lat: startLat,
+        start_lng: startLng,
         province_id: provinceId,
         num_days: numDays,
         num_nights: numNights,

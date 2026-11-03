@@ -151,67 +151,50 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       lat: number;
       lng: number;
       name: string;
-      isUser?: boolean;
+      isOrigin?: boolean;
       time_slot?: string;
       address?: string;
       category?: string;
       cost?: number;
     }> = [];
 
-    // Neu co GPS nguoi dung
-    if (currentUserLoc && dayNumber === 1) {
-      points.push({
-        lat: currentUserLoc.lat,
-        lng: currentUserLoc.lng,
-        name: 'Vị trí của bạn (Điểm xuất phát)',
-        isUser: true,
-        address: 'Tọa độ GPS thiết bị thực tế',
-      });
-    }
-
-    items.forEach((item) => {
+    items.forEach((item, index) => {
+      const isDepartureItem = index === 0 && item.location.name.toLowerCase().includes('điểm xuất phát');
+      const useLiveGPS = isDepartureItem && currentUserLoc;
       points.push({
         id: item.location.id,
-        lat: item.location.latitude,
-        lng: item.location.longitude,
+        lat: useLiveGPS ? currentUserLoc.lat : item.location.latitude,
+        lng: useLiveGPS ? currentUserLoc.lng : item.location.longitude,
         name: item.location.name,
+        isOrigin: isDepartureItem,
         time_slot: item.time_slot,
-        address: item.location.address,
+        address: useLiveGPS ? `Tọa độ GPS thiết bị thực tế (${currentUserLoc.lat.toFixed(4)}, ${currentUserLoc.lng.toFixed(4)})` : item.location.address,
         category: item.location.category,
         cost: item.location.avg_cost_vnd,
       });
     });
 
-    // 1. Ve Google Maps Style Pin Markers
+    // 1. Ve Google Maps Style Pin Markers (Khớp 100% số thứ tự 1, 2, 3... với cột Timeline bên trái)
     points.forEach((p, idx) => {
-      const isStart = p.isUser;
-      const markerNumber = currentUserLoc && dayNumber === 1 ? idx : idx + 1;
+      const markerNumber = idx + 1;
+      const pinColor = p.isOrigin ? '#1A73E8' : p.category === 'hotel' ? '#7C3AED' : '#EA4335';
 
-      // Google Pin SVG custom HTML
-      const markerHtml = isStart
-        ? `
-          <div class="relative flex items-center justify-center">
-            <span class="absolute w-8 h-8 rounded-full bg-blue-500/40 animate-ping"></span>
-            <div style="background: #1A73E8; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px;">
-            </div>
+      const markerHtml = `
+        <div style="position: relative; width: 34px; height: 42px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35)); transition: transform 0.2s;" class="hover:scale-110">
+          <svg viewBox="0 0 384 512" width="34" height="42" fill="${pinColor}">
+            <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0z"/>
+          </svg>
+          <div style="position: absolute; top: 10px; left: 0; width: 34px; text-align: center; color: white; font-weight: 900; font-size: 13px; font-family: sans-serif;">
+            ${markerNumber}
           </div>
-        `
-        : `
-          <div style="position: relative; width: 34px; height: 42px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35)); transition: transform 0.2s;" class="hover:scale-110">
-            <svg viewBox="0 0 384 512" width="34" height="42" fill="#EA4335">
-              <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0z"/>
-            </svg>
-            <div style="position: absolute; top: 12px; left: 0; width: 34px; text-align: center; color: white; font-weight: 900; font-size: 13px; font-family: sans-serif;">
-              ${markerNumber}
-            </div>
-          </div>
-        `;
+        </div>
+      `;
 
       const customIcon = L.divIcon({
         className: 'google-map-marker',
         html: markerHtml,
         iconSize: [34, 42],
-        iconAnchor: isStart ? [11, 11] : [17, 42],
+        iconAnchor: [17, 42],
         popupAnchor: [0, -38],
       });
 
@@ -222,19 +205,19 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       }
 
       marker.bindPopup(`
-        <div style="font-family: inherit; width: 220px; padding: 2px;">
+        <div style="font-family: inherit; width: 225px; padding: 2px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-            <span style="background: #EA4335; color: white; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px;">
-              Điểm ${markerNumber}
+            <span style="background: ${pinColor}; color: white; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px;">
+              Vị trí số ${markerNumber}
             </span>
             ${p.time_slot ? `<span style="color: #1A73E8; font-weight: 700; font-size: 11px;">⏰ ${p.time_slot}</span>` : ''}
           </div>
           <div style="font-weight: 800; font-size: 13px; color: #1e293b; line-height: 1.3; margin-bottom: 4px;">
             ${p.name}
           </div>
-          <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">${p.address || ''}</div>
+          <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">📍 ${p.address || ''}</div>
           ${p.cost ? `<div style="font-size: 11px; font-weight: 700; color: #059669;">Chi phí: ${p.cost.toLocaleString('vi-VN')}đ</div>` : ''}
-          <div style="margin-top: 8px; pt: 4px; border-top: 1px solid #f1f5f9;">
+          <div style="margin-top: 8px; padding-top: 4px; border-top: 1px solid #f1f5f9;">
             <a 
               href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}" 
               target="_blank" 
@@ -521,30 +504,56 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             </button>
           </div>
 
-          {/* Danh sách các chặng nhỏ (Segments) bấm vào để zoom */}
-          {segments.length > 0 && (
+          {/* Danh sách các điểm dừng 1, 2, 3... khớp 100% với cột Timeline & Ghim bản đồ */}
+          {items.length > 0 && (
             <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
-              {segments.map((seg, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSelectSegment(i)}
-                  className={`flex-shrink-0 text-left px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                    selectedSegmentIndex === i
-                      ? 'bg-red-50 border-red-500 text-red-900 shadow-sm'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-1 font-bold">
-                    <span className="w-4 h-4 rounded-full bg-slate-300 text-[10px] text-slate-700 flex items-center justify-center font-black">
-                      {i + 1}
-                    </span>
-                    <span className="truncate max-w-[130px]">{seg.toName}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    {seg.distanceKm} km • ~{seg.durationMinutes} ph
-                  </div>
-                </button>
-              ))}
+              {items.map((item, idx) => {
+                const isSelected = activeLocationId === item.location.id;
+                const seg = idx > 0 ? segments[idx - 1] : null;
+                const distKm = seg ? seg.distanceKm : item.travel_distance_km || 0;
+                const durMin = seg ? seg.durationMinutes : item.travel_time_minutes || 0;
+
+                return (
+                  <button
+                    key={`${item.location.id}_${idx}`}
+                    onClick={() => {
+                      if (onSelectLocation) {
+                        onSelectLocation(item.location.id);
+                      }
+                      if (idx > 0 && segments[idx - 1]) {
+                        handleSelectSegment(idx - 1);
+                      } else {
+                        handleSelectSegment(null);
+                      }
+                    }}
+                    className={`flex-shrink-0 text-left px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-100 border-amber-500 text-amber-950 shadow-sm ring-2 ring-amber-300'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <span
+                        className={`w-4 h-4 rounded-full text-[10px] text-white flex items-center justify-center font-black ${
+                          idx === 0
+                            ? 'bg-blue-600'
+                            : item.location.category === 'hotel'
+                            ? 'bg-purple-600'
+                            : 'bg-red-600'
+                        }`}
+                      >
+                        {idx + 1}
+                      </span>
+                      <span className="truncate max-w-[145px]">{item.location.name}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      {idx === 0
+                        ? `🚩 Khởi hành (${item.time_slot})`
+                        : `${distKm} km • ~${durMin} ph (${item.time_slot})`}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

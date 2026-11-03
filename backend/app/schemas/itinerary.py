@@ -8,6 +8,8 @@ class ItineraryGenerateRequest(BaseModel):
     province_id: Optional[int] = None
     destination: Optional[str] = None
     start_location: Optional[str] = None
+    start_lat: Optional[float] = None
+    start_lng: Optional[float] = None
     num_days: int = 3
     num_nights: int = 2
     prompt: Optional[str] = None

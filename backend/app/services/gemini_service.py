@@ -161,9 +161,9 @@ def generate_dynamic_itinerary_with_gemini(
         f"- Sở thích & yêu cầu của du khách: '{user_prompt or 'Khám phá danh lam thắng cảnh, ẩm thực đặc sản địa phương và quán cà phê đẹp'}'\n\n"
         "QUY TẮC BẮT BUỘC:\n"
         "1. TRẢ VỀ DUY NHẤT 1 KHỐI JSON HỢP LỆ (không viết bất kỳ lời dẫn hay markdown nào ngoài JSON).\n"
-        "2. TẤT CẢ địa điểm phải là ĐỊA DANH, QUÁN ĂN, QUÁN CÀ PHÊ CÓ THẬT 100% ngoài đời thực tại điểm đến đó (CẤM TUYỆT ĐỐI đặt tên chung chung như 'Quán đặc sản truyền thống...', 'Điểm check-in trung tâm...').\n"
-        "3. Tọa độ GPS (latitude, longitude) phải CHÍNH XÁC ngoài đời thực của từng địa điểm để vẽ lộ trình Google Maps.\n"
-        "4. Mỗi ngày có từ 4 đến 5 điểm dừng sắp xếp thuận đường di chuyển theo khung giờ (Sáng -> Trưa -> Chiều -> Tối).\n"
+        "2. TẤT CẢ địa điểm phải là ĐỊA DANH, KHÁCH SẠN, QUÁN ĂN, QUÁN CÀ PHÊ CÓ THẬT 100% ngoài đời thực tại điểm đến đó. CẤM TUYỆT ĐỐI đặt tên hành động như 'Xuất phát từ...', 'Khởi hành về...', 'Di chuyển đến...' hay tên chung chung như 'Quán ăn ven hồ (Gợi ý:...)'.\n"
+        "3. Tọa độ GPS (latitude, longitude) phải CHÍNH XÁC ngoài đời thực của từng địa điểm tại tỉnh đến.\n"
+        "4. Mỗi ngày có từ 4 đến 5 điểm dừng thực tế (Tham quan sáng -> Ăn trưa đặc sản -> Tham quan chiều -> Cà phê hoàng hôn -> Ăn tối/Chợ đêm) sắp xếp thuận đường di chuyển.\n"
         "5. Cấu trúc JSON chính xác như sau:\n"
         "{\n"
         '  "destination_name": "Tên tỉnh/thành phố chuẩn (ví dụ: Đà Lạt)",\n'

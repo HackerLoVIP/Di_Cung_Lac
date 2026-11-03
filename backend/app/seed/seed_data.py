@@ -41,13 +41,23 @@ def run_seed():
             "Điểm check-in nổi tiếng trung tâm",
             "Quán đặc sản truyền thống",
             "Khu sinh thái & ngắm cảnh thiên nhiên",
-            "Chợ đêm & phố đi bộ"
+            "Chợ đêm & phố đi bộ",
+            "Xuất phát từ",
+            "Khởi hành về",
+            "Gợi ý:"
         ]
         for prefix in fake_prefixes:
             fake_locs = db.query(Location).filter(Location.name.ilike(f"%{prefix}%")).all()
             for fl in fake_locs:
                 db.query(MenuItem).filter(MenuItem.location_id == fl.id).delete()
                 db.delete(fl)
+
+        # Xoa cac dia diem bi dat ten trung voi ten tinh thanh (VD: location 'TP. Hồ Chí Minh' trong tinh Tây Ninh)
+        city_only_names = ["TP. Hồ Chí Minh", "Hồ Chí Minh", "Sài Gòn", "Tây Ninh", "Đà Lạt", "Vũng Tàu", "Pleiku", "Phú Quốc", "Hà Nội"]
+        bad_city_locs = db.query(Location).filter(Location.name.in_(city_only_names)).all()
+        for bcl in bad_city_locs:
+            db.query(MenuItem).filter(MenuItem.location_id == bcl.id).delete()
+            db.delete(bcl)
         db.commit()
 
         # 3. Danh sach Tinh / Thanh pho chuan xac voi anh bia rieng biet
@@ -135,6 +145,21 @@ def run_seed():
         # 4. Bo du lieu Dia diem THUC TE 100% cho tung tinh thanh
         locations_by_province = {
             "vung-tau": [
+                {
+                    "name": "Khách sạn The Imperial Hotel & Resort Vũng Tàu",
+                    "category": "hotel",
+                    "description": "Khách sạn 5 sao cổ điển sang trọng tọa lạc ngay mặt tiền biển Bãi Sau với bãi tắm riêng và cầu đi bộ sang biển.",
+                    "address": "159 Thùy Vân, Phường Thắng Tam, TP. Vũng Tàu",
+                    "lat": 10.3439,
+                    "lng": 107.0945,
+                    "cost": 450000,
+                    "duration": 45,
+                    "tips": "Có thể gửi hành lý tại quầy lễ tân nếu đến sớm trước giờ check-in 14h00 để đi tham quan nhẹ nhàng.",
+                    "transport_info": "Mặt tiền đường Thùy Vân, có hầm và bãi đỗ xe ô tô, xe máy miễn phí cho khách lưu trú.",
+                    "menu": [
+                        {"name": "Nhận phòng / Gửi hành lý lưu trú", "price": 450000, "is_signature": True}
+                    ]
+                },
                 {
                     "name": "Tượng Chúa Kitô Vua (Đỉnh Núi Nhỏ)",
                     "category": "tourist_spot",
@@ -308,6 +333,21 @@ def run_seed():
             ],
             "da-lat": [
                 {
+                    "name": "Khách sạn Hôtel Colline Đà Lạt (Trung tâm Chợ Đà Lạt)",
+                    "category": "hotel",
+                    "description": "Khách sạn 4 sao hiện đại nằm ngay trung tâm khu Hòa Bình và Chợ Đà Lạt, cực kỳ thuận tiện để gửi hành lý và di chuyển.",
+                    "address": "Số 10 Phan Bội Châu, Phường 1, TP. Đà Lạt",
+                    "lat": 11.9422,
+                    "lng": 108.4381,
+                    "cost": 400000,
+                    "duration": 45,
+                    "tips": "Gửi hành lý tại sảnh lễ tân nếu tới Đà Lạt vào sáng sớm, đi bộ ra Hồ Xuân Hương và Chợ Đà Lạt chỉ 2 phút.",
+                    "transport_info": "Ngay trục đường Phan Bội Châu trung tâm Phường 1, có tầng hầm đỗ xe rộng rãi.",
+                    "menu": [
+                        {"name": "Nhận phòng / Gửi hành lý lưu trú", "price": 400000, "is_signature": True}
+                    ]
+                },
+                {
                     "name": "Đồi Chè Cầu Đất (Cầu Đất Farm)",
                     "category": "tourist_spot",
                     "description": "Đồi chè cổ hơn 100 năm tuổi trải dài xanh mướt kết hợp cánh đồng điện gió khổng lồ và điểm săn biển mây bình minh đẹp nhất Đà Lạt.",
@@ -441,6 +481,21 @@ def run_seed():
             ],
             "tay-ninh": [
                 {
+                    "name": "Khách sạn Vinpearl Hotel Tây Ninh (Meliá Vinpearl)",
+                    "category": "hotel",
+                    "description": "Khách sạn 5 sao cao nhất Tây Ninh nằm ngay trung tâm thành phố với tầm nhìn thẳng ra đỉnh Núi Bà Đen hùng vĩ.",
+                    "address": "Số 90 Lê Duẩn, Phường 3, TP. Tây Ninh",
+                    "lat": 11.3135,
+                    "lng": 106.0983,
+                    "cost": 350000,
+                    "duration": 45,
+                    "tips": "Điểm dừng chân đầu tiên lý tưởng để gửi hành lý, nghỉ ngơi sau chặng đường từ Sài Gòn lên Tây Ninh.",
+                    "transport_info": "Ngay ngã tư Lê Duẩn - 30/4 trung tâm TP. Tây Ninh, bãi đỗ xe rộng rãi.",
+                    "menu": [
+                        {"name": "Nhận phòng / Gửi hành lý lưu trú", "price": 350000, "is_signature": True}
+                    ]
+                },
+                {
                     "name": "Khu du lịch Quốc gia Núi Bà Đen",
                     "category": "tourist_spot",
                     "description": "Nóc nhà Nam Bộ cao 986m với hệ thống cáp treo Sun World hiện đại đưa du khách xuyên mây lên chiêm bái tượng Phật Bà Tây Bổ Đà Sơn và Tôn tượng Bồ Tát Di Lặc bằng đá sa thạch.",
@@ -571,6 +626,21 @@ def run_seed():
             ],
             "ho-chi-minh": [
                 {
+                    "name": "Khách sạn Majestic Saigon (Bến Bạch Đằng)",
+                    "category": "hotel",
+                    "description": "Khách sạn di sản 5 sao kiến trúc Pháp cổ điển nằm ngay góc đường Đồng Khởi và Bến Bạch Đằng nhìn ra sông Sài Gòn.",
+                    "address": "Số 01 Đồng Khởi, Phường Bến Nghé, Quận 1, TP.HCM",
+                    "lat": 10.7731,
+                    "lng": 106.7061,
+                    "cost": 500000,
+                    "duration": 45,
+                    "tips": "Nằm ngay trung tâm Quận 1, thuận tiện gửi hành lý và đi bộ ra Phố đi bộ Nguyễn Huệ.",
+                    "transport_info": "Có hầm đỗ xe ngay mặt đường Tôn Đức Thắng - Đồng Khởi.",
+                    "menu": [
+                        {"name": "Nhận phòng / Gửi hành lý lưu trú", "price": 500000, "is_signature": True}
+                    ]
+                },
+                {
                     "name": "Dinh Độc Lập (Hội Trường Thống Nhất)",
                     "category": "tourist_spot",
                     "description": "Di tích quốc gia đặc biệt giữa trung tâm Quận 1 với kiến trúc phương Đông hiện đại, khuôn viên cây cổ thụ xanh mát và hệ thống phòng khánh tiết, hầm chỉ huy lịch sử.",
@@ -669,6 +739,21 @@ def run_seed():
             ],
             "pleiku": [
                 {
+                    "name": "Khách sạn Hoàng Anh Gia Lai Pleiku",
+                    "category": "hotel",
+                    "description": "Khách sạn 4 sao lớn nhất trung tâm phố núi Pleiku nằm ngay Quảng trường Phù Đổng, thuận tiện di chuyển đi Biển Hồ.",
+                    "address": "Số 01 Phù Đổng, Phường Phù Đổng, TP. Pleiku, Gia Lai",
+                    "lat": 13.9756,
+                    "lng": 108.0068,
+                    "cost": 350000,
+                    "duration": 45,
+                    "tips": "Dừng chân nhận phòng, gửi đồ tại khách sạn trung tâm trước khi đi khám phá Biển Hồ.",
+                    "transport_info": "Bãi đậu xe rộng ngay vòng xoay Phù Đổng.",
+                    "menu": [
+                        {"name": "Nhận phòng / Gửi hành lý lưu trú", "price": 350000, "is_signature": True}
+                    ]
+                },
+                {
                     "name": "Biển Hồ Pleiku (Hồ T'Nưng)",
                     "category": "tourist_spot",
                     "description": "Hồ nước ngọt tự nhiên hình thành từ miệng núi lửa cổ đã ngưng hoạt động hàng triệu năm, mặt nước xanh ngọc bích phẳng lặng giữa rừng thông đại ngàn.",
@@ -747,6 +832,21 @@ def run_seed():
                 }
             ],
             "phu-quoc": [
+                {
+                    "name": "Khách sạn Seashells Phú Quốc Hotel & Spa",
+                    "category": "hotel",
+                    "description": "Khách sạn 5 sao hình cánh buồm nằm ngay trung tâm thị trấn Dương Đông sát bờ biển và Chợ Đêm Phú Quốc.",
+                    "address": "Số 01 Võ Thị Sáu, Phường Dương Đông, TP. Phú Quốc",
+                    "lat": 10.2189,
+                    "lng": 103.9576,
+                    "cost": 500000,
+                    "duration": 45,
+                    "tips": "Di chuyển từ sân bay/bến tàu về nhận phòng hoặc gửi hành lý tại đây trước khi đi Nam Đảo - Bắc Đảo.",
+                    "transport_info": "Ngay trung tâm Dương Đông, cách Chợ Đêm Phú Quốc 200m.",
+                    "menu": [
+                        {"name": "Nhận phòng / Gửi hành lý lưu trú", "price": 500000, "is_signature": True}
+                    ]
+                },
                 {
                     "name": "Bãi Sao Phú Quốc",
                     "category": "beach",

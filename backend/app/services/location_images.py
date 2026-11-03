@@ -123,6 +123,16 @@ REAL_LOCATION_IMAGES = {
     "làng chài hàm ninh": "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=800&auto=format&fit=crop",
     "bún quậy": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop",
 
+    # === KHÁCH SẠN & ĐIỂM XUẤT PHÁT ===
+    "imperial": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop",
+    "vinpearl": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&auto=format&fit=crop",
+    "mường thanh": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&auto=format&fit=crop",
+    "colline": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop",
+    "majestic": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&auto=format&fit=crop",
+    "seashells": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&auto=format&fit=crop",
+    "hoàng anh gia lai": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop",
+    "điểm xuất phát": "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop",
+
     # === BẾN TRE & CẦN THƠ ===
     "cồn phụng": "https://images.unsplash.com/photo-1528127269322-539801943592?w=800&auto=format&fit=crop",
     "kẹo dừa": "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?w=800&auto=format&fit=crop",
