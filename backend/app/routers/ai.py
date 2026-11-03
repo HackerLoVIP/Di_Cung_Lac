@@ -16,13 +16,25 @@ class ChatRequest(BaseModel):
 
 @router.post("/chat")
 def chat_with_copilot(req: ChatRequest, db: Session = Depends(get_db)):
-    # Trich xuat du lieu dia diem that de lam RAG Context cho Gemini AI
-    locations = db.query(Location).filter(Location.province_id == req.province_id).all()
+    # Tu dong nhan dien tinh thanh trong cau hoi cua khach hoac theo province_id hien tai
+    msg_lower = req.message.lower()
+    target_province_id = req.province_id
+    all_provinces = db.query(Province).all()
+    for p in all_provinces:
+        if p.name.lower() in msg_lower:
+            target_province_id = p.id
+            break
+
+    locations = db.query(Location).filter(Location.province_id == target_province_id).all()
+    if not locations:
+        locations = db.query(Location).limit(15).all()
+
     context_lines = []
     for loc in locations:
+        p_name = loc.province.name if loc.province else ""
         menu_str = ", ".join([f"{m.name} ({m.price_vnd:,}đ)" for m in loc.menu_items[:3]]) if loc.menu_items else ""
         context_lines.append(
-            f"- {loc.name} ({loc.category}): Địa chỉ {loc.address}. Giá TB {loc.avg_cost_vnd:,}đ. Mẹo: {loc.tips}. Menu: {menu_str}"
+            f"- [{p_name}] {loc.name} ({loc.category}): Địa chỉ {loc.address}. Giá TB {loc.avg_cost_vnd:,}đ. Mẹo: {loc.tips}. Menu: {menu_str}"
         )
     locations_context = "\n".join(context_lines)
 
