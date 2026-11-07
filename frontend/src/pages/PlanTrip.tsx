@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import L from 'leaflet';
 import axios from 'axios';
 import { itineraryAPI, expenseAPI } from '../services/api';
 import { Itinerary } from '../types';
 import { ItineraryTimeline } from '../components/ItineraryTimeline';
 import { RouteMap } from '../components/RouteMap';
-import { useAuth } from '../contexts/AuthContext';
 import {
   FaBookmark,
   FaShareAlt,
@@ -32,6 +32,9 @@ import {
   FaMapMarkedAlt,
   FaCrosshairs,
   FaMagic,
+  FaSearchLocation,
+  FaSuitcase,
+  FaExternalLinkAlt,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -53,7 +56,6 @@ function calcRoadDistanceKm(lat1: number, lon1: number, lat2: number, lon2: numb
 export const PlanTrip: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const savedTripId = searchParams.get('itineraryId');
   const destination = searchParams.get('destination') || '';
@@ -67,7 +69,6 @@ export const PlanTrip: React.FC = () => {
   const startDateStr = searchParams.get('startDate') || '';
   const endDateStr = searchParams.get('endDate') || '';
 
-  // Kiểm tra xem người dùng đã chọn điểm đến cụ thể hay bấm trực tiếp vào menu /plan
   const hasTripTarget = Boolean(savedTripId || destination.trim() || provinceId);
 
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
@@ -85,6 +86,8 @@ export const PlanTrip: React.FC = () => {
   } | null>(null);
   const [loading, setLoading] = useState<boolean>(hasTripTarget);
   const [saving, setSaving] = useState<boolean>(false);
+  const [isSaved, setIsSaved] = useState<boolean>(Boolean(savedTripId));
+  const [savedTripsList, setSavedTripsList] = useState<any[]>([]);
   const [showCostModal, setShowCostModal] = useState<boolean>(false);
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [activeLocationId, setActiveLocationId] = useState<number | null>(null);
@@ -102,6 +105,12 @@ export const PlanTrip: React.FC = () => {
   const [editDays, setEditDays] = useState<number>(numDays || 2);
   const [editPrompt, setEditPrompt] = useState<string>(prompt || '');
   const [locatingOrigin, setLocatingOrigin] = useState<boolean>(false);
+  const [geocodingOrigin, setGeocodingOrigin] = useState<boolean>(false);
+  const [showOriginPickerMap, setShowOriginPickerMap] = useState<boolean>(false);
+
+  const pickerMapContainerRef = useRef<HTMLDivElement>(null);
+  const pickerMapRef = useRef<L.Map | null>(null);
+  const pickerMarkerRef = useRef<L.Marker | null>(null);
 
   // Expense Tracker State
   interface ExpenseItem {
@@ -144,10 +153,15 @@ export const PlanTrip: React.FC = () => {
     return `Tọa độ GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
   };
 
-  // Đồng bộ Điểm số 1 (Vị trí xuất phát) trên cả Timeline bên trái và Bản đồ bên phải khi định vị GPS hoặc kéo thả ghim
+  // Đồng bộ Điểm số 1 (Vị trí xuất phát) trên cả Timeline bên trái và Bản đồ bên phải
   const handleOriginChange = useCallback((lat: number, lng: number, addressLabel: string) => {
     setEditStart(addressLabel);
     setEditStartCoords({ lat, lng });
+
+    if (pickerMarkerRef.current && pickerMapRef.current) {
+      pickerMarkerRef.current.setLatLng([lat, lng]);
+      pickerMapRef.current.flyTo([lat, lng], 16, { duration: 0.8 });
+    }
 
     setItinerary((prev) => {
       if (!prev) return prev;
@@ -167,7 +181,6 @@ export const PlanTrip: React.FC = () => {
           },
         };
 
-        // Tính lại khoảng cách từ Điểm số 1 mới tới Điểm số 2 (Khách sạn)
         if (newItems.length > 1) {
           const secondItem = newItems[1];
           const distKm = calcRoadDistanceKm(
@@ -190,23 +203,40 @@ export const PlanTrip: React.FC = () => {
     });
   }, []);
 
-  // Bấm nút lấy GPS trực tiếp tại ô Điểm số 1
+  // Định vị vị trí hiện tại (Browser GPS + Backend Network/IP Geolocation Fallback - Không bao giờ báo lỗi đỏ)
   const handleDetectMyGPS = (silent = false) => {
+    setLocatingOrigin(true);
+    if (!silent) toast('Đang dò tọa độ vị trí hiện tại của bạn...', { icon: '📍' });
+
+    const applyOrigin = (lat: number, lng: number, label: string) => {
+      setLocatingOrigin(false);
+      handleOriginChange(lat, lng, label);
+      if (!silent) {
+        toast.success(`Đã định vị Điểm số 1: ${label}`);
+      }
+    };
+
+    const fallbackToBackendLocation = async () => {
+      try {
+        const netLoc = await itineraryAPI.detectLocation();
+        applyOrigin(netLoc.latitude, netLoc.longitude, netLoc.address);
+      } catch {
+        setLocatingOrigin(false);
+        if (!silent) {
+          toast('Hãy gõ địa chỉ hoặc chấm chọn trên bản đồ bên dưới nhé!', { icon: '🗺️' });
+        }
+      }
+    };
+
     if (!navigator.geolocation) {
-      if (!silent) toast.error('Trình duyệt không hỗ trợ định vị GPS');
+      fallbackToBackendLocation();
       return;
     }
-    setLocatingOrigin(true);
-    if (!silent) toast('Đang xác định tọa độ GPS vị trí hiện tại của bạn...', { icon: '📍' });
 
     const onSuccess = async (pos: GeolocationPosition) => {
       const { latitude, longitude } = pos.coords;
       const label = await reverseGeocodeAddress(latitude, longitude);
-      setLocatingOrigin(false);
-      handleOriginChange(latitude, longitude, label);
-      if (!silent) {
-        toast.success(`Đã định vị Điểm số 1: ${label}`);
-      }
+      applyOrigin(latitude, longitude, label);
     };
 
     navigator.geolocation.getCurrentPosition(
@@ -215,22 +245,122 @@ export const PlanTrip: React.FC = () => {
         navigator.geolocation.getCurrentPosition(
           onSuccess,
           () => {
-            setLocatingOrigin(false);
-            if (!silent) {
-              toast.error('Không thể lấy GPS tự động. Bạn có thể gõ trực tiếp số nhà/đường/quận vào ô Điểm số 1!');
-            }
+            fallbackToBackendLocation();
           },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+          { enableHighAccuracy: false, timeout: 3500, maximumAge: 60000 }
         );
       },
-      { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 3500, maximumAge: 30000 }
     );
   };
 
-  // Tự động lấy GPS cho màn hình thiết lập nhanh khi vào /plan chưa có tham số
+  // Xác thực tọa độ chính xác trên Google Maps cho địa chỉ người dùng vừa gõ vào ô Điểm số 1
+  const handleVerifyTypedOrigin = async () => {
+    const q = editStart.trim();
+    if (!q) {
+      toast.error('Vui lòng nhập địa chỉ, tên đường hoặc quận/huyện cần định vị!');
+      return;
+    }
+    setGeocodingOrigin(true);
+    try {
+      const res = await itineraryAPI.geocodeAddress(q);
+      handleOriginChange(res.latitude, res.longitude, res.address || q);
+      toast.success(
+        `Đã ghim tọa độ chính xác: ${res.address || q} (${res.latitude.toFixed(4)}, ${res.longitude.toFixed(4)})`
+      );
+    } catch {
+      toast.error('Không tìm thấy địa chỉ này, hãy thử nhập rõ tên đường/quận/thành phố');
+    } finally {
+      setGeocodingOrigin(false);
+    }
+  };
+
+  // Khởi tạo Mini-Map chọn vị trí chính xác trên màn hình thiết lập /plan
   useEffect(() => {
-    if (!hasTripTarget && !startLat && !startLng) {
-      handleDetectMyGPS(true);
+    if (!showOriginPickerMap || !pickerMapContainerRef.current) return;
+
+    if (pickerMapRef.current) {
+      pickerMapRef.current.remove();
+      pickerMapRef.current = null;
+    }
+    if ((pickerMapContainerRef.current as any)._leaflet_id) {
+      (pickerMapContainerRef.current as any)._leaflet_id = null;
+    }
+
+    const initLat = editStartCoords?.lat || 10.7769;
+    const initLng = editStartCoords?.lng || 106.7009;
+
+    const map = L.map(pickerMapContainerRef.current, {
+      zoomControl: true,
+      scrollWheelZoom: true,
+    }).setView([initLat, initLng], 15);
+    pickerMapRef.current = map;
+
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '&copy; Google Maps',
+    }).addTo(map);
+
+    const pinIcon = L.divIcon({
+      className: 'origin-picker-pin',
+      html: `
+        <div style="position: relative; width: 34px; height: 42px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));">
+          <svg viewBox="0 0 384 512" width="34" height="42" fill="#1A73E8">
+            <path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0z"/>
+          </svg>
+          <div style="position: absolute; top: 10px; left: 0; width: 34px; text-align: center; color: white; font-weight: 900; font-size: 13px;">1</div>
+        </div>
+      `,
+      iconSize: [34, 42],
+      iconAnchor: [17, 42],
+    });
+
+    const marker = L.marker([initLat, initLng], {
+      icon: pinIcon,
+      draggable: true,
+    }).addTo(map);
+    pickerMarkerRef.current = marker;
+
+    marker.on('dragend', async () => {
+      const pos = marker.getLatLng();
+      const label = await reverseGeocodeAddress(pos.lat, pos.lng);
+      setEditStart(label);
+      setEditStartCoords({ lat: pos.lat, lng: pos.lng });
+      toast.success(`Đã chọn Điểm số 1: ${label}`);
+    });
+
+    map.on('click', async (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      marker.setLatLng([lat, lng]);
+      const label = await reverseGeocodeAddress(lat, lng);
+      setEditStart(label);
+      setEditStartCoords({ lat, lng });
+      toast.success(`Đã chọn Điểm số 1: ${label}`);
+    });
+
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+
+    return () => {
+      if (pickerMapRef.current) {
+        pickerMapRef.current.remove();
+        pickerMapRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showOriginPickerMap]);
+
+  // Tự động lấy vị trí và tải danh sách lịch trình đã lưu khi mở /plan
+  useEffect(() => {
+    if (!hasTripTarget) {
+      if (!startLat && !startLng) {
+        handleDetectMyGPS(true);
+      }
+      itineraryAPI
+        .getMyTrips()
+        .then((list) => setSavedTripsList(list || []))
+        .catch(() => setSavedTripsList([]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasTripTarget]);
@@ -375,6 +505,7 @@ export const PlanTrip: React.FC = () => {
     let isCancelled = false;
     setLoading(true);
     setActiveLocationId(null);
+    setIsSaved(Boolean(savedTripId));
 
     if (savedTripId) {
       itineraryAPI
@@ -385,12 +516,16 @@ export const PlanTrip: React.FC = () => {
           setEditDest(itinData.province?.name || '');
           setEditDays(itinData.num_days || 2);
           const firstDayItem = itinData.days?.[0]?.items?.[0];
-          if (firstDayItem?.location?.name) {
-            const cleanStart = firstDayItem.location.name
+          if (firstDayItem?.location) {
+            const cleanStart = (firstDayItem.location.name || '')
               .replace(/^Điểm xuất phát:\s*/i, '')
               .replace(/\s*\(Vị trí.*\)$/i, '')
               .trim();
             if (cleanStart) setEditStart(cleanStart);
+            setEditStartCoords({
+              lat: firstDayItem.location.latitude,
+              lng: firstDayItem.location.longitude,
+            });
           }
           const pId = itinData.province?.id || 1;
           return axios
@@ -427,6 +562,11 @@ export const PlanTrip: React.FC = () => {
             if (finalStartLoc) setEditStart(finalStartLoc);
             if (finalLat !== undefined && finalLng !== undefined) {
               setEditStartCoords({ lat: finalLat, lng: finalLng });
+            } else if (itinData.days?.[0]?.items?.[0]?.location) {
+              setEditStartCoords({
+                lat: itinData.days[0].items[0].location.latitude,
+                lng: itinData.days[0].items[0].location.longitude,
+              });
             }
             const pId = itinData.province?.id || 1;
             return axios
@@ -444,26 +584,33 @@ export const PlanTrip: React.FC = () => {
       };
 
       const isDefaultStart = !startLocation || startLocation.trim().toLowerCase() === 'tp. hồ chí minh';
-      if (startLat === undefined && startLng === undefined && isDefaultStart && navigator.geolocation) {
-        const onGpsOk = async (pos: GeolocationPosition) => {
-          const { latitude, longitude } = pos.coords;
-          const detectedLabel = await reverseGeocodeAddress(latitude, longitude);
-          runGenerate(detectedLabel, latitude, longitude);
+      if (startLat === undefined && startLng === undefined && isDefaultStart) {
+        const fallbackToBackendLoc = async () => {
+          try {
+            const netLoc = await itineraryAPI.detectLocation();
+            runGenerate(netLoc.address, netLoc.latitude, netLoc.longitude);
+          } catch {
+            runGenerate(startLocation || undefined, startLat, startLng);
+          }
         };
 
-        navigator.geolocation.getCurrentPosition(
-          onGpsOk,
-          () => {
-            navigator.geolocation.getCurrentPosition(
-              onGpsOk,
-              () => {
-                runGenerate(startLocation || undefined, startLat, startLng);
-              },
-              { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-            );
-          },
-          { enableHighAccuracy: true, timeout: 4500, maximumAge: 30000 }
-        );
+        if (navigator.geolocation) {
+          const onGpsOk = async (pos: GeolocationPosition) => {
+            const { latitude, longitude } = pos.coords;
+            const detectedLabel = await reverseGeocodeAddress(latitude, longitude);
+            runGenerate(detectedLabel, latitude, longitude);
+          };
+
+          navigator.geolocation.getCurrentPosition(
+            onGpsOk,
+            () => {
+              fallbackToBackendLoc();
+            },
+            { enableHighAccuracy: false, timeout: 3500, maximumAge: 60000 }
+          );
+        } else {
+          fallbackToBackendLoc();
+        }
       } else {
         runGenerate(startLocation || undefined, startLat, startLng);
       }
@@ -509,35 +656,39 @@ export const PlanTrip: React.FC = () => {
     });
   }, [itinerary, selectedDay, selectedCategoryFilter]);
 
+  // Lưu lịch trình trực tiếp vào Database & Sổ tay (Hoạt động cho cả khách chưa đăng nhập lẫn thành viên đã đăng nhập)
   const handleSaveTrip = async () => {
-    if (!user) {
-      toast('Vui lòng đăng nhập để lưu lịch trình vào tài khoản', { icon: '🔒' });
-      navigate('/login');
+    if (!itinerary) return;
+    if (isSaved && itinerary.id) {
+      navigate('/my-trips');
       return;
     }
-    if (!itinerary) return;
 
     setSaving(true);
     try {
       const savedItin = await itineraryAPI.save(itinerary);
-      if (savedItin?.id && expenses.length > 0) {
-        const unsavedExpenses = expenses.filter((e) => !e.id);
-        await Promise.all(
-          unsavedExpenses.map((e) =>
-            expenseAPI
-              .create({
-                itinerary_id: savedItin.id!,
-                title: e.title,
-                category: e.category,
-                planned_cost: e.planned_cost || 0,
-                actual_cost: e.actual_cost || 0,
-              })
-              .catch(() => null)
-          )
-        );
+      if (savedItin?.id) {
+        setItinerary((prev) => (prev ? { ...prev, id: savedItin.id, share_code: savedItin.share_code } : prev));
+        setIsSaved(true);
+
+        if (expenses.length > 0) {
+          const unsavedExpenses = expenses.filter((e) => !e.id);
+          await Promise.all(
+            unsavedExpenses.map((e) =>
+              expenseAPI
+                .create({
+                  itinerary_id: savedItin.id!,
+                  title: e.title,
+                  category: e.category,
+                  planned_cost: e.planned_cost || 0,
+                  actual_cost: e.actual_cost || 0,
+                })
+                .catch(() => null)
+            )
+          );
+        }
       }
-      toast.success('Đã lưu lịch trình và sổ chi tiêu thành công!');
-      navigate('/my-trips');
+      toast.success('Đã lưu lịch trình vào "Lịch trình đã lưu" thành công!');
     } catch (e) {
       console.error(e);
       toast.error('Không thể lưu lịch trình lúc này');
@@ -547,11 +698,14 @@ export const PlanTrip: React.FC = () => {
   };
 
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success('Đã sao chép liên kết chia sẻ!');
+    const shareUrl = itinerary?.id
+      ? `${window.location.origin}/plan?itineraryId=${itinerary.id}`
+      : window.location.href;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success('Đã sao chép liên kết chia sẻ lịch trình!');
   };
 
-  // Màn hình Khởi tạo nhanh Lộ trình khi người dùng bấm trực tiếp vào menu "Lập lịch trình" (/plan) trên Navbar
+  // Màn hình Khởi tạo Lộ trình khi người dùng bấm trực tiếp vào menu "Lập lịch trình" (/plan)
   if (!hasTripTarget && !loading) {
     const popularDestinations = [
       { name: 'Đà Lạt', desc: 'Săn mây, thông reo & cà phê đồi', icon: '🌲' },
@@ -565,11 +719,12 @@ export const PlanTrip: React.FC = () => {
     ];
 
     const quickOrigins = [
-      'TP. Hồ Chí Minh',
       'Quận 1, TP. Hồ Chí Minh',
       'TP. Thủ Đức, TP. Hồ Chí Minh',
       'Quận Gò Vấp, TP. Hồ Chí Minh',
       'Quận 7, TP. Hồ Chí Minh',
+      'Quận Bình Thạnh, TP. Hồ Chí Minh',
+      'Quận Tân Bình, TP. Hồ Chí Minh',
       'Bình Dương',
       'Biên Hòa, Đồng Nai',
       'Hà Nội',
@@ -578,22 +733,22 @@ export const PlanTrip: React.FC = () => {
     ];
 
     return (
-      <div className="h-[calc(100vh-64px)] overflow-y-auto bg-gradient-to-b from-amber-50/60 via-[#faf9f5] to-white py-8 px-4 sm:px-6">
+      <div className="h-[calc(100vh-64px)] overflow-y-auto bg-gradient-to-b from-amber-50/60 via-[#faf9f5] to-white py-8 px-4 sm:px-6 space-y-8">
         <div className="max-w-3xl mx-auto bg-white rounded-3xl border-2 border-amber-200/90 shadow-xl p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-2">
             <span className="inline-flex items-center gap-1.5 pastel-yellow-badge px-3.5 py-1 rounded-full text-xs font-black">
-              ✨ Thiết lập lộ trình AI & Định vị thực tế
+              ✨ Thiết lập lộ trình AI & Định vị chính xác
             </span>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
-              Bạn muốn bắt đầu chuyến đi từ đâu và đi đâu?
+              Thiết kế chuyến đi & Chọn vị trí xuất phát của bạn
             </h1>
             <p className="text-xs sm:text-sm text-slate-500">
-              Điểm số 1 sẽ là vị trí hiện tại của bạn, Điểm số 2 là khách sạn nhận phòng/gửi đồ, tiếp theo là các điểm tham quan & ăn uống chuẩn tọa độ Google Maps.
+              Bạn có thể gõ địa chỉ cụ thể, bấm định vị tự động, hoặc mở bản đồ chấm chọn chính xác vị trí Điểm số 1 của mình.
             </p>
           </div>
 
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (!editDest.trim()) {
                 toast.error('Vui lòng chọn hoặc nhập điểm đến!');
@@ -614,34 +769,83 @@ export const PlanTrip: React.FC = () => {
             className="space-y-5"
           >
             {/* Điểm số 1: Vị trí hiện tại của bạn */}
-            <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
+            <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="text-xs font-black text-blue-900 uppercase flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px]">1</span>
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px]">
+                    1
+                  </span>
                   <span>Điểm xuất phát (Vị trí hiện tại của bạn)</span>
                 </label>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowOriginPickerMap(!showOriginPickerMap)}
+                    className="bg-white hover:bg-blue-100 text-blue-700 border border-blue-300 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition shadow-2xs"
+                  >
+                    <FaMapMarkedAlt />
+                    <span>{showOriginPickerMap ? 'Ẩn bản đồ chọn vị trí' : 'Chọn vị trí trên bản đồ'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDetectMyGPS(false)}
+                    disabled={locatingOrigin}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+                  >
+                    <FaCrosshairs className={locatingOrigin ? 'animate-spin' : ''} />
+                    <span>{locatingOrigin ? 'Đang định vị...' : 'Vị trí hiện tại'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  value={editStart}
+                  onChange={(e) => {
+                    setEditStart(e.target.value);
+                    setEditStartCoords(null);
+                  }}
+                  placeholder="Nhập số nhà, tên đường, phường/xã, quận/huyện, thành phố..."
+                  className="flex-1 bg-white border border-blue-200 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:outline-none shadow-2xs"
+                />
                 <button
                   type="button"
-                  onClick={() => handleDetectMyGPS(false)}
-                  disabled={locatingOrigin}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+                  onClick={handleVerifyTypedOrigin}
+                  disabled={geocodingOrigin}
+                  className="bg-slate-900 hover:bg-black text-white text-xs font-bold px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition shrink-0"
+                  title="Tìm và ghim tọa độ chính xác của địa chỉ này trên Google Maps"
                 >
-                  <FaCrosshairs className={locatingOrigin ? 'animate-spin' : ''} />
-                  <span>{locatingOrigin ? 'Đang dò GPS...' : 'Lấy GPS vị trí của tôi'}</span>
+                  {geocodingOrigin ? <FaSpinner className="animate-spin" /> : <FaSearchLocation />}
+                  <span className="hidden sm:inline">Định vị địa chỉ</span>
                 </button>
               </div>
 
-              <input
-                type="text"
-                required
-                value={editStart}
-                onChange={(e) => {
-                  setEditStart(e.target.value);
-                  setEditStartCoords(null);
-                }}
-                placeholder="Nhập số nhà, tên đường, phường/xã, quận/huyện, thành phố..."
-                className="w-full bg-white border border-blue-200 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:outline-none shadow-2xs"
-              />
+              {editStartCoords && (
+                <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center justify-between">
+                  <span>
+                    ✅ Đã xác thực tọa độ Điểm số 1: ({editStartCoords.lat.toFixed(5)},{' '}
+                    {editStartCoords.lng.toFixed(5)})
+                  </span>
+                  <span className="text-[10px] text-emerald-600">Chính xác trên Google Maps</span>
+                </div>
+              )}
+
+              {/* Bản đồ tương tác chấm chọn vị trí chính xác */}
+              {showOriginPickerMap && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[11px] font-bold text-blue-800">
+                    🎯 Nhấp chuột trực tiếp vào vị trí của bạn trên bản đồ (hoặc kéo thả Ghim số 1) để chọn tọa độ chính xác:
+                  </p>
+                  <div
+                    ref={pickerMapContainerRef}
+                    className="w-full h-64 rounded-2xl border-2 border-blue-300 shadow-inner overflow-hidden z-0"
+                  />
+                </div>
+              )}
 
               <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                 <span className="text-[11px] text-slate-500 font-semibold">Chọn nhanh khu vực:</span>
@@ -649,9 +853,14 @@ export const PlanTrip: React.FC = () => {
                   <button
                     key={org}
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       setEditStart(org);
-                      setEditStartCoords(null);
+                      try {
+                        const g = await itineraryAPI.geocodeAddress(org);
+                        setEditStartCoords({ lat: g.latitude, lng: g.longitude });
+                      } catch {
+                        setEditStartCoords(null);
+                      }
                     }}
                     className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
                       editStart === org
@@ -740,6 +949,45 @@ export const PlanTrip: React.FC = () => {
             </button>
           </form>
         </div>
+
+        {/* Danh sách Lịch trình đã lưu hiển thị ngay bên dưới để truy cập nhanh */}
+        {savedTripsList.length > 0 && (
+          <div className="max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <FaSuitcase className="text-amber-600" />
+                <span>Lịch trình đã lưu của bạn ({savedTripsList.length})</span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => navigate('/my-trips')}
+                className="text-xs font-bold text-amber-800 hover:underline cursor-pointer"
+              >
+                Xem tất cả trong Sổ tay ➔
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {savedTripsList.slice(0, 4).map((trip) => (
+                <div
+                  key={trip.id}
+                  onClick={() => navigate(`/plan?itineraryId=${trip.id}`)}
+                  className="p-3.5 rounded-2xl border border-slate-200 hover:border-amber-400 bg-slate-50/70 hover:bg-amber-50/40 transition cursor-pointer flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-black text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                      {trip.num_days}N{trip.num_nights}Đ
+                    </span>
+                    <h3 className="font-extrabold text-xs text-slate-900 truncate mt-1">{trip.title}</h3>
+                    <p className="text-[11px] text-slate-500">
+                      📍 {trip.province_name} • {trip.total_cost?.toLocaleString('vi-VN')} đ
+                    </p>
+                  </div>
+                  <FaExternalLinkAlt className="text-xs text-amber-700 shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -774,13 +1022,12 @@ export const PlanTrip: React.FC = () => {
 
   return (
     <div className="h-[calc(100vh-64px)] w-full flex flex-col lg:flex-row overflow-hidden relative bg-slate-100">
-      {/* Google Maps Styled Left Panel (Navigation Search & Turn-by-Turn Timeline) */}
+      {/* Google Maps Styled Left Panel */}
       <div
-        className={`w-full lg:w-[390px] xl:w-[415px] 2xl:w-[435px] h-full overflow-y-auto bg-white border-r border-slate-200 shadow-xl z-20 transition-all duration-300 relative shrink-0 scrollbar-thin ${
-          isSidebarCollapsed ? 'lg:-ml-[390px] xl:-ml-[415px] 2xl:-ml-[435px]' : ''
+        className={`w-full lg:w-[395px] xl:w-[420px] 2xl:w-[440px] h-full overflow-y-auto bg-white border-r border-slate-200 shadow-xl z-20 transition-all duration-300 relative shrink-0 scrollbar-thin ${
+          isSidebarCollapsed ? 'lg:-ml-[395px] xl:-ml-[420px] 2xl:-ml-[440px]' : ''
         } ${mobileTab === 'map' ? 'hidden lg:block' : 'block'}`}
       >
-        {/* Sidebar Toggle Chevron Pill for Desktop */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           className="hidden lg:flex absolute top-16 -right-4 z-30 bg-white hover:bg-amber-100 text-slate-700 hover:text-amber-950 border border-slate-200 shadow-md rounded-r-xl w-4 h-14 items-center justify-center cursor-pointer transition text-xs"
@@ -789,7 +1036,6 @@ export const PlanTrip: React.FC = () => {
           {isSidebarCollapsed ? <FaChevronRight className="text-[10px]" /> : <FaChevronLeft className="text-[10px]" />}
         </button>
 
-        {/* Unified Content Stream: Direction, Controls & Timeline */}
         <div className="p-3.5 sm:p-4 space-y-3">
           {/* Mode Selector (Xe máy / Ô tô / Đi bộ) */}
           <div className="flex items-center justify-between pb-1 border-b border-slate-100">
@@ -802,7 +1048,6 @@ export const PlanTrip: React.FC = () => {
                     ? 'bg-amber-300 text-amber-950 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="Phượt bằng xe máy"
               >
                 <FaMotorcycle /> <span>Xe máy</span>
               </button>
@@ -814,7 +1059,6 @@ export const PlanTrip: React.FC = () => {
                     ? 'bg-amber-300 text-amber-950 shadow-xs font-black'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="Ô tô du lịch"
               >
                 <FaCar /> <span>Ô tô</span>
               </button>
@@ -826,7 +1070,6 @@ export const PlanTrip: React.FC = () => {
                     ? 'bg-amber-300 text-amber-950 shadow-xs font-black'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="Đi bộ dạo phố"
               >
                 <FaWalking /> <span>Đi bộ</span>
               </button>
@@ -843,9 +1086,9 @@ export const PlanTrip: React.FC = () => {
             </div>
           </div>
 
-          {/* Direction Inputs Card (Interactive Origin & Destination with GPS Button) */}
+          {/* Direction Inputs Card (Interactive Origin & Destination with Geocode & GPS) */}
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const nextParams = new URLSearchParams(searchParams);
               nextParams.delete('itineraryId');
@@ -865,7 +1108,6 @@ export const PlanTrip: React.FC = () => {
             }}
             className="relative bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 space-y-1.5"
           >
-            {/* Connecting Vertical Dotted Line */}
             <div className="absolute left-[21px] top-[22px] bottom-[52px] w-0.5 border-l-2 border-dashed border-slate-300 pointer-events-none" />
 
             {/* Origin Row (Điểm số 1) */}
@@ -874,20 +1116,32 @@ export const PlanTrip: React.FC = () => {
                 <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
               </div>
               <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs focus-within:border-blue-500">
-                <div className="flex items-center justify-between mb-0.5">
+                <div className="flex items-center justify-between mb-0.5 gap-1">
                   <span className="text-[9px] text-blue-600 font-bold uppercase leading-none">
-                    Điểm số 1 (Vị trí xuất phát của bạn)
+                    Điểm số 1 (Xuất phát)
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDetectMyGPS(false)}
-                    disabled={locatingOrigin}
-                    className="text-[9px] font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-1 cursor-pointer transition"
-                    title="Định vị GPS thực tế ngay lập tức"
-                  >
-                    <FaCrosshairs className={locatingOrigin ? 'animate-spin' : ''} />
-                    <span>GPS của tôi</span>
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handleVerifyTypedOrigin}
+                      disabled={geocodingOrigin}
+                      className="text-[9px] font-extrabold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1 cursor-pointer transition"
+                      title="Ghim chính xác tọa độ địa chỉ vừa gõ lên bản đồ"
+                    >
+                      <FaSearchLocation className="text-blue-600" />
+                      <span>Ghim địa chỉ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDetectMyGPS(false)}
+                      disabled={locatingOrigin}
+                      className="text-[9px] font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-1 cursor-pointer transition"
+                      title="Định vị vị trí hiện tại"
+                    >
+                      <FaCrosshairs className={locatingOrigin ? 'animate-spin' : ''} />
+                      <span>Vị trí của tôi</span>
+                    </button>
+                  </div>
                 </div>
                 <input
                   type="text"
@@ -896,7 +1150,7 @@ export const PlanTrip: React.FC = () => {
                     setEditStart(e.target.value);
                     setEditStartCoords(null);
                   }}
-                  placeholder="Nhập số nhà, đường, quận/huyện..."
+                  placeholder="Nhập số nhà, đường, phường, quận..."
                   className="w-full font-bold text-slate-900 bg-transparent focus:outline-none text-xs"
                 />
               </div>
@@ -935,18 +1189,17 @@ export const PlanTrip: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-1">
-              <span className="text-[10px] text-slate-400 italic mr-auto pl-7">
-                💡 Bấm ghim 1, 2, 3 hoặc kéo Ghim số 1 trên bản đồ
+              <span className="text-[10px] text-slate-500 mr-auto pl-7">
+                🎯 Có thể bấm <b>"Chấm chọn Điểm 1"</b> trên bản đồ
               </span>
               <button
                 type="submit"
                 className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-xs cursor-pointer transition"
               >
-                Tạo & Cập nhật
+                Tạo lại lộ trình
               </button>
             </div>
 
-            {/* Swap Button on the right */}
             <button
               type="button"
               onClick={() => {
@@ -962,6 +1215,54 @@ export const PlanTrip: React.FC = () => {
               <FaExchangeAlt className="rotate-90 text-[10px]" />
             </button>
           </form>
+
+          {/* Nút Lưu Lịch Trình nổi bật + Công cụ nhanh */}
+          <div className="space-y-1.5 pt-0.5">
+            <button
+              type="button"
+              onClick={handleSaveTrip}
+              disabled={saving}
+              className={`w-full py-2.5 px-4 rounded-xl font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+                isSaved
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'pastel-yellow-btn text-amber-950 ring-2 ring-amber-300/60 hover:scale-[1.01]'
+              }`}
+            >
+              {isSaved ? <FaCheck className="text-xs" /> : <FaBookmark className="text-xs" />}
+              <span>
+                {saving
+                  ? 'Đang lưu lịch trình...'
+                  : isSaved
+                  ? 'Đã lưu lịch trình (Bấm để mở Sổ tay đã lưu)'
+                  : '💾 Lưu lịch trình này vào Sổ tay'}
+              </span>
+            </button>
+
+            <div className="flex items-center justify-between gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowCostModal(true)}
+                className="flex-1 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-950 font-black text-[11px] transition flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <FaMoneyBillWave className="text-amber-700 text-[11px]" />
+                <span>Chi phí: {itinerary.total_cost.toLocaleString('vi-VN')} đ</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] transition flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <FaShareAlt className="text-[10px]" /> Chia sẻ
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] transition flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <FaPrint className="text-[10px]" /> In/PDF
+              </button>
+            </div>
+          </div>
 
           {/* Google Maps Discovery Quick Category Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-xs">
@@ -1074,70 +1375,16 @@ export const PlanTrip: React.FC = () => {
             </button>
           </div>
 
-          {/* Weather & Budget Quick Strip */}
-          <div className="flex items-center justify-between gap-2 text-xs">
-            {weather ? (
-              <div className="flex items-center gap-1.5 bg-amber-50/90 border border-amber-200/80 px-2 py-1 rounded-xl">
-                <span className="text-sm">{weather.icon || '☀️'}</span>
-                <div>
-                  <span className="font-black text-slate-800 text-xs mr-1">{weather.temp}</span>
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded uppercase">
-                    Live
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <span className="text-[10px] text-slate-400">☀️ Đang tải thời tiết...</span>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setShowCostModal(true)}
-              className="pastel-yellow-badge hover:bg-amber-300 text-amber-950 font-black px-2.5 py-1 rounded-xl text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer"
-              title="Mở Sổ Tay Chi Tiêu & Dự Toán"
-            >
-              <FaMoneyBillWave className="text-amber-700 text-xs" />
-              <span>{itinerary.total_cost.toLocaleString('vi-VN')} đ</span>
-            </button>
-          </div>
-
-          {/* Quick Action Toolbar */}
-          <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="flex-1 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] transition flex items-center justify-center gap-1 cursor-pointer"
-              title="In hoặc xuất PDF"
-            >
-              <FaPrint className="text-[10px]" /> In / PDF
-            </button>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="flex-1 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] transition flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <FaShareAlt className="text-[10px]" /> Chia sẻ
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveTrip}
-              disabled={saving}
-              className="flex-1 py-1 rounded-lg bg-slate-900 hover:bg-black text-white font-black text-[10px] transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 shadow-xs"
-            >
-              <FaBookmark className="text-amber-400 text-[10px]" /> {saving ? 'Đang lưu...' : 'Lưu lại'}
-            </button>
-          </div>
-
           {/* Turn-by-Turn Itinerary Timeline Header */}
-          <div className="flex items-center justify-between pt-2 px-0.5 border-t border-slate-100">
+          <div className="flex items-center justify-between pt-1 px-0.5 border-t border-slate-100">
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
               {selectedDay === 0 ? 'Toàn bộ lộ trình' : `Chi tiết Ngày ${selectedDay}`}
             </span>
-            <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md">
-              {selectedDay === 0
-                ? `${itinerary.days.reduce((acc, d) => acc + d.items.length, 0)} điểm dừng`
-                : `${itinerary.days.find((d) => d.day_number === selectedDay)?.items.length || 0} điểm dừng`}
-            </span>
+            {weather && (
+              <span className="text-[10px] font-bold text-slate-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                {weather.icon || '☀️'} {weather.temp}
+              </span>
+            )}
           </div>
 
           {/* Stops Timeline */}
@@ -1163,7 +1410,7 @@ export const PlanTrip: React.FC = () => {
         </div>
       </div>
 
-      {/* Google Maps Styled Right Panel (Interactive Master Canvas Studio) */}
+      {/* Google Maps Styled Right Panel */}
       <div
         className={`flex-1 h-full w-full relative z-10 bg-slate-200 overflow-hidden ${
           mobileTab === 'timeline' ? 'hidden lg:block' : 'block'
@@ -1175,10 +1422,12 @@ export const PlanTrip: React.FC = () => {
           activeLocationId={activeLocationId}
           onSelectLocation={(locId) => setActiveLocationId(locId)}
           onOriginChange={handleOriginChange}
+          onSaveTrip={handleSaveTrip}
+          savingTrip={saving}
+          isSavedTrip={isSaved}
           className="w-full h-full rounded-none border-0 shadow-none"
         />
 
-        {/* Floating Button to Reopen Sidebar if Collapsed */}
         {isSidebarCollapsed && (
           <button
             onClick={() => setIsSidebarCollapsed(false)}
@@ -1195,26 +1444,20 @@ export const PlanTrip: React.FC = () => {
         <button
           type="button"
           onClick={() => setMobileTab('timeline')}
-          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl text-xs font-bold transition ${
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-xs font-bold transition ${
             mobileTab === 'timeline'
               ? 'text-amber-900 bg-amber-100 font-black'
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           <FaListUl className="text-base" />
-          <span>
-            Lộ trình (
-            {selectedDay === 0
-              ? itinerary.days.reduce((acc, d) => acc + d.items.length, 0)
-              : itinerary.days.find((d) => d.day_number === selectedDay)?.items.length || 0}
-            )
-          </span>
+          <span>Lộ trình</span>
         </button>
 
         <button
           type="button"
           onClick={() => setMobileTab('map')}
-          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl text-xs font-bold transition ${
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-xs font-bold transition ${
             mobileTab === 'map'
               ? 'text-amber-900 bg-amber-100 font-black'
               : 'text-slate-500 hover:text-slate-900'
@@ -1226,8 +1469,17 @@ export const PlanTrip: React.FC = () => {
 
         <button
           type="button"
+          onClick={handleSaveTrip}
+          className="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50"
+        >
+          <FaBookmark className="text-base" />
+          <span>{isSaved ? 'Đã lưu' : 'Lưu lại'}</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setShowCostModal(true)}
-          className="flex flex-col items-center gap-1 py-1 px-4 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100"
+          className="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100"
         >
           <FaMoneyBillWave className="text-base text-amber-600" />
           <span>Chi tiêu</span>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { ItineraryItem } from '../types';
+import { itineraryAPI } from '../services/api';
 import {
   FaMotorcycle,
   FaCrosshairs,
@@ -8,6 +9,9 @@ import {
   FaCompress,
   FaSpinner,
   FaDirections,
+  FaMapPin,
+  FaBookmark,
+  FaCheck,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -17,6 +21,9 @@ interface RouteMapProps {
   activeLocationId?: number | null;
   onSelectLocation?: (locationId: number) => void;
   onOriginChange?: (lat: number, lng: number, addressLabel: string) => void;
+  onSaveTrip?: () => void;
+  savingTrip?: boolean;
+  isSavedTrip?: boolean;
   className?: string;
 }
 
@@ -61,6 +68,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   activeLocationId,
   onSelectLocation,
   onOriginChange,
+  onSaveTrip,
+  savingTrip = false,
+  isSavedTrip = false,
   className,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -71,6 +81,12 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   const highlightLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const markersRef = useRef<{ [key: number]: L.Marker }>({});
   const renderIdRef = useRef<number>(0);
+  const pickOriginModeRef = useRef<boolean>(false);
+  const onOriginChangeRef = useRef(onOriginChange);
+
+  useEffect(() => {
+    onOriginChangeRef.current = onOriginChange;
+  }, [onOriginChange]);
 
   const [mapLayer, setMapLayer] = useState<MapLayerType>('google_streets');
   const [segments, setSegments] = useState<RouteSegment[]>([]);
@@ -78,7 +94,15 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   const [loadingRoute, setLoadingRoute] = useState<boolean>(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [gettingGPS, setGettingGPS] = useState<boolean>(false);
+  const [pickOriginMode, setPickOriginMode] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  useEffect(() => {
+    pickOriginModeRef.current = pickOriginMode;
+    if (mapContainerRef.current) {
+      mapContainerRef.current.style.cursor = pickOriginMode ? 'crosshair' : '';
+    }
+  }, [pickOriginMode]);
 
   // Chữ ký ổn định của danh sách điểm dừng để tránh vẽ lại bản đồ khi chỉ click chọn vị trí
   const itemsSignature = useMemo(() => {
@@ -149,6 +173,20 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     routeLayerGroupRef.current = L.layerGroup().addTo(map);
     highlightLayerGroupRef.current = L.layerGroup().addTo(map);
     markersLayerGroupRef.current = L.layerGroup().addTo(map);
+
+    // Cho phép click trực tiếp lên bản đồ để chấm chọn Điểm số 1 (Vị trí xuất phát)
+    map.on('click', async (e: L.LeafletMouseEvent) => {
+      if (!pickOriginModeRef.current) return;
+      const { lat, lng } = e.latlng;
+      setPickOriginMode(false);
+      setUserLocation({ lat, lng });
+      const label = await reverseGeocodeLabel(lat, lng);
+      if (onOriginChangeRef.current) {
+        onOriginChangeRef.current(lat, lng, label);
+      }
+      map.flyTo([lat, lng], 16, { duration: 0.8 });
+      toast.success(`Đã chọn Điểm số 1 tại: ${label}`);
+    });
 
     const resizeObserver = new ResizeObserver(() => {
       if (mapInstanceRef.current) {
@@ -292,8 +330,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             const newPos = marker.getLatLng();
             setUserLocation({ lat: newPos.lat, lng: newPos.lng });
             const label = await reverseGeocodeLabel(newPos.lat, newPos.lng);
-            if (onOriginChange) {
-              onOriginChange(newPos.lat, newPos.lng, label);
+            if (onOriginChangeRef.current) {
+              onOriginChangeRef.current(newPos.lat, newPos.lng, label);
             }
             toast.success(`Đã cập nhật Điểm số 1 tại: ${label}`);
           });
@@ -367,7 +405,6 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             });
           }
         } catch {
-          // fallback直線 nếu OSRM nghẽn mạng
           segList.push({
             fromIndex: i,
             toIndex: i + 1,
@@ -383,7 +420,6 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         }
       }
 
-      // Kiểm tra lại một lần nữa sau khi tất cả lệnh await hoàn tất
       if (
         currentRenderId !== renderIdRef.current ||
         !mapInstanceRef.current ||
@@ -406,7 +442,6 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           lineJoin: 'round',
         }).addTo(routeLayerGroupRef.current);
 
-        // Chỉ tự động fitBounds toàn lộ trình khi người dùng chưa bấm chọn ghim cụ thể
         if (!activeLocationId) {
           const bounds = fullPolyline.getBounds();
           if (bounds.isValid()) {
@@ -434,7 +469,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsSignature]);
 
-  // 5. Khi người dùng bấm chọn Vị trí 1, 2, 3... (ở Timeline hoặc dưới đáy bản đồ) -> Bay mượt tới đúng vị trí đó và giữ nguyên camera
+  // 5. Khi người dùng bấm chọn Vị trí 1, 2, 3... -> Bay mượt tới đúng vị trí đó và giữ nguyên camera
   useEffect(() => {
     if (
       activeLocationId !== null &&
@@ -449,47 +484,56 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     }
   }, [activeLocationId]);
 
-  // Định vị GPS thực tế của thiết bị cho Vị trí số 1
+  // Định vị GPS thực tế của thiết bị cho Vị trí số 1 (kèm Backend Network/IP Geolocation Fallback không bao giờ lỗi)
   const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Trình duyệt không hỗ trợ Geolocation GPS');
-      return;
-    }
-
     setGettingGPS(true);
-    toast('Đang dò tọa độ GPS vị trí thực tế của bạn...', { icon: '🛰️' });
+    toast('Đang dò tọa độ vị trí thực tế của bạn...', { icon: '🛰️' });
 
-    const onSuccess = async (pos: GeolocationPosition) => {
-      const { latitude, longitude } = pos.coords;
-      setUserLocation({ lat: latitude, lng: longitude });
+    const applyDetectedLocation = (lat: number, lng: number, label: string) => {
+      setUserLocation({ lat, lng });
       setGettingGPS(false);
-
-      const label = await reverseGeocodeLabel(latitude, longitude);
-      if (onOriginChange) {
-        onOriginChange(latitude, longitude, label);
+      if (onOriginChangeRef.current) {
+        onOriginChangeRef.current(lat, lng, label);
       }
-
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo([latitude, longitude], 16, { duration: 1.0 });
+        mapInstanceRef.current.flyTo([lat, lng], 16, { duration: 1.0 });
       }
       toast.success(`Đã định vị Điểm số 1 tại: ${label}`);
     };
 
+    const fallbackToBackendNetworkGPS = async () => {
+      try {
+        const netLoc = await itineraryAPI.detectLocation();
+        applyDetectedLocation(netLoc.latitude, netLoc.longitude, netLoc.address);
+      } catch {
+        setGettingGPS(false);
+        toast.error('Bạn hãy bấm nút "Chấm chọn Điểm 1" trên bản đồ để chọn vị trí chính xác nhé!');
+      }
+    };
+
+    if (!navigator.geolocation) {
+      fallbackToBackendNetworkGPS();
+      return;
+    }
+
+    const onBrowserGpsSuccess = async (pos: GeolocationPosition) => {
+      const { latitude, longitude } = pos.coords;
+      const label = await reverseGeocodeLabel(latitude, longitude);
+      applyDetectedLocation(latitude, longitude, label);
+    };
+
     navigator.geolocation.getCurrentPosition(
-      onSuccess,
+      onBrowserGpsSuccess,
       () => {
-        // Fallback sang chế độ Wi-Fi / IP nếu thiết bị không có chip GPS phần cứng
         navigator.geolocation.getCurrentPosition(
-          onSuccess,
-          (err) => {
-            setGettingGPS(false);
-            console.error(err);
-            toast.error('Không thể lấy vị trí tự động. Bạn có thể gõ địa chỉ hoặc kéo thả Ghim số 1 trên bản đồ!');
+          onBrowserGpsSuccess,
+          () => {
+            fallbackToBackendNetworkGPS();
           },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+          { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
         );
       },
-      { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 4000, maximumAge: 30000 }
     );
   };
 
@@ -605,16 +649,45 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           </button>
         </div>
 
-        {/* Nút GPS, Mở Google Maps thật & Fullscreen */}
-        <div className="pointer-events-auto flex items-center gap-2">
+        {/* Nút Lưu lịch trình, Chấm chọn Điểm 1, GPS, Mở Google Maps thật & Fullscreen */}
+        <div className="pointer-events-auto flex flex-wrap items-center gap-2">
+          {onSaveTrip && (
+            <button
+              type="button"
+              onClick={onSaveTrip}
+              disabled={savingTrip}
+              className={`flex items-center gap-1.5 font-extrabold text-xs px-3.5 py-2 rounded-2xl shadow-lg transition cursor-pointer ${
+                isSavedTrip
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-amber-400 hover:bg-amber-500 text-amber-950 ring-2 ring-white'
+              }`}
+              title="Lưu lịch trình này vào Sổ tay du lịch"
+            >
+              {isSavedTrip ? <FaCheck className="text-xs" /> : <FaBookmark className="text-xs" />}
+              <span>{savingTrip ? 'Đang lưu...' : isSavedTrip ? 'Đã lưu lịch trình' : 'Lưu lịch trình'}</span>
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={handleOpenGoogleMapsNavigation}
-            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-2xl shadow-lg transition cursor-pointer"
-            title="Mở toàn bộ lộ trình trên Google Maps để bật chế độ dẫn đường giọng nói"
+            onClick={() => {
+              const next = !pickOriginMode;
+              setPickOriginMode(next);
+              if (next) {
+                toast('Hãy nhấp chuột vào bất kỳ vị trí nào trên bản đồ để đặt Điểm số 1 (Xuất phát)!', {
+                  icon: '🎯',
+                });
+              }
+            }}
+            className={`flex items-center gap-1.5 font-extrabold text-xs px-3 py-2 rounded-2xl shadow-lg border transition cursor-pointer ${
+              pickOriginMode
+                ? 'bg-blue-600 text-white border-blue-400 ring-2 ring-blue-300 animate-pulse'
+                : 'bg-white/95 hover:bg-blue-50 text-blue-700 border-slate-200'
+            }`}
+            title="Click vào bản đồ để chọn chính xác vị trí xuất phát của bạn"
           >
-            <FaDirections className="text-sm" />
-            <span className="hidden sm:inline">Dẫn đường</span> Google Maps
+            <FaMapPin className="text-xs" />
+            <span>{pickOriginMode ? 'Click lên bản đồ để đặt Điểm 1...' : 'Chấm chọn Điểm 1'}</span>
           </button>
 
           <button
@@ -622,10 +695,20 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             onClick={handleGetCurrentLocation}
             disabled={gettingGPS}
             className="bg-white/95 backdrop-blur-md hover:bg-white text-slate-800 font-bold px-3 py-2 rounded-2xl shadow-lg border border-slate-200 transition cursor-pointer flex items-center gap-1.5 text-xs"
-            title="Định vị GPS thực tế của bạn cho Điểm số 1"
+            title="Định vị vị trí hiện tại của bạn cho Điểm số 1"
           >
             <FaCrosshairs className={`text-blue-600 ${gettingGPS ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline text-blue-700 font-extrabold">Vị trí của tôi</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenGoogleMapsNavigation}
+            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-2xl shadow-lg transition cursor-pointer"
+            title="Mở toàn bộ lộ trình trên Google Maps"
+          >
+            <FaDirections className="text-sm" />
+            <span className="hidden sm:inline">Dẫn đường</span> Google Maps
           </button>
 
           <button
@@ -639,8 +722,22 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         </div>
       </div>
 
+      {/* Banner hướng dẫn khi đang bật chế độ Chấm chọn Điểm 1 trên bản đồ */}
+      {pickOriginMode && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[20] bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 shadow-xl border-2 border-white">
+          <span>🎯 Hãy nhấp chuột vào đúng vị trí xuất phát của bạn trên bản đồ để đặt Điểm số 1!</span>
+          <button
+            type="button"
+            onClick={() => setPickOriginMode(false)}
+            className="bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-full text-[10px] cursor-pointer"
+          >
+            Hủy
+          </button>
+        </div>
+      )}
+
       {/* Loading Bar khi đang tính toán OSRM */}
-      {loadingRoute && (
+      {loadingRoute && !pickOriginMode && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[20] bg-slate-900/90 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-xl backdrop-blur-sm border border-slate-700">
           <FaSpinner className="animate-spin text-blue-400" />
           <span>Đang vẽ lộ trình đường đi thực tế...</span>
@@ -678,7 +775,6 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             </button>
           </div>
 
-          {/* Danh sách các điểm dừng 1, 2, 3... bấm vào sẽ bay thẳng tới ghim đó mà không bị nhảy ngược lại */}
           {items.length > 0 && (
             <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
               {items.map((item, idx) => {
@@ -695,13 +791,11 @@ export const RouteMap: React.FC<RouteMapProps> = ({
                       if (onSelectLocation) {
                         onSelectLocation(item.location.id);
                       }
-                      // Tô nổi bật chặng đường dẫn tới điểm này nhưng KHÔNG gọi fitBounds để giữ camera zoom tại điểm vừa chọn
                       if (idx > 0 && segments[idx - 1]) {
                         handleSelectSegment(idx - 1, false);
                       } else {
                         handleSelectSegment(null, false);
                       }
-                      // Đảm bảo bay thẳng tới ghim ngay cả khi bấm lại vào cùng 1 vị trí đang chọn
                       const marker = markersRef.current[item.location.id];
                       if (marker && mapInstanceRef.current) {
                         mapInstanceRef.current.flyTo(marker.getLatLng(), 16, { duration: 1.0 });

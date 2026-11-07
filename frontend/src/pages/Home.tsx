@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { provinceAPI } from '../services/api';
+import { provinceAPI, itineraryAPI } from '../services/api';
 import { Province } from '../types';
 import {
   FaMapMarkerAlt,
@@ -131,14 +131,31 @@ export const Home: React.FC = () => {
     }
   };
 
-  // GPS Geolocation with High-Accuracy Reverse Geocoding & Desktop Fallback
+  // GPS Geolocation with High-Accuracy Reverse Geocoding & Backend Network Fallback
   const handleGetCurrentLocation = (silent = false) => {
+    setIsLocating(true);
+    if (!silent) toast('Đang dò tìm vị trí thực tế của bạn...', { icon: '📍' });
+
+    const fallbackToBackendLoc = async () => {
+      try {
+        const netLoc = await itineraryAPI.detectLocation();
+        setStartCoords({ lat: netLoc.latitude, lng: netLoc.longitude });
+        setStartLocation(netLoc.address);
+        if (!silent) toast.success(`Đã định vị vị trí của bạn: ${netLoc.address}!`);
+      } catch {
+        if (!silent) {
+          setStartCoords(null);
+          setStartLocation('TP. Hồ Chí Minh');
+        }
+      } finally {
+        setIsLocating(false);
+      }
+    };
+
     if (!navigator.geolocation) {
-      if (!silent) toast.error('Trình duyệt của bạn không hỗ trợ định vị GPS');
+      fallbackToBackendLoc();
       return;
     }
-    setIsLocating(true);
-    if (!silent) toast('Đang dò tìm vị trí GPS chính xác của bạn...', { icon: '📍' });
 
     const onGpsSuccess = async (pos: GeolocationPosition) => {
       const { latitude, longitude } = pos.coords;
@@ -158,7 +175,7 @@ export const Home: React.FC = () => {
           const parts = [road, suburb, district, detectedCity].filter(Boolean);
           const fullLabel = parts.length > 0 ? parts.join(', ') : detectedCity;
           setStartLocation(fullLabel);
-          if (!silent) toast.success(`Đã định vị GPS vị trí của bạn: ${fullLabel}!`);
+          if (!silent) toast.success(`Đã định vị vị trí của bạn: ${fullLabel}!`);
           setIsLocating(false);
           return;
         }
@@ -175,7 +192,7 @@ export const Home: React.FC = () => {
       } else {
         setStartLocation('TP. Hồ Chí Minh');
       }
-      if (!silent) toast.success('Đã cập nhật tọa độ GPS xuất phát!');
+      if (!silent) toast.success('Đã cập nhật tọa độ xuất phát!');
       setIsLocating(false);
     };
 
@@ -185,17 +202,12 @@ export const Home: React.FC = () => {
         navigator.geolocation.getCurrentPosition(
           onGpsSuccess,
           () => {
-            setIsLocating(false);
-            if (!silent) {
-              setStartCoords(null);
-              setStartLocation('TP. Hồ Chí Minh');
-              toast.error('Không thể truy cập GPS tự động. Bạn có thể nhập trực tiếp địa chỉ Điểm đi!');
-            }
+            fallbackToBackendLoc();
           },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+          { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
         );
       },
-      { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 4000, maximumAge: 30000 }
     );
   };
 

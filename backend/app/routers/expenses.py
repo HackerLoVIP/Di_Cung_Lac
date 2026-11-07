@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.expense import Expense
 from app.models.itinerary import Itinerary
 from app.models.user import User
-from app.services.auth import get_current_user
+from app.services.auth import get_optional_current_user
 
 router = APIRouter(prefix="/api/expenses", tags=["Expenses"])
 
@@ -47,7 +47,7 @@ def get_itinerary_expenses(
 def create_expense(
     data: ExpenseCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """Them khoan chi tieu moi vao so chi tieu"""
     if not data.itinerary_id:
@@ -74,7 +74,7 @@ def update_expense(
     expense_id: int,
     data: ExpenseUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """Chinh sua mot khoan chi tieu (cap nhat so tien thuc te, danh muc)"""
     exp = db.query(Expense).filter(Expense.id == expense_id).first()
@@ -98,7 +98,7 @@ def update_expense(
 def delete_expense(
     expense_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """Xoa mot khoan chi tieu"""
     exp = db.query(Expense).filter(Expense.id == expense_id).first()
