@@ -62,6 +62,7 @@ export interface Itinerary {
   num_nights: number;
   status: string;
   total_cost: number;
+  budget?: number;
   days: ItineraryDay[];
   share_code?: string;
   created_at?: string;

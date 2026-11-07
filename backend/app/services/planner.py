@@ -476,6 +476,7 @@ def generate_smart_itinerary(
     start_lng: Optional[float] = None,
     num_days: int = 2,
     num_nights: int = 1,
+    budget: Optional[int] = None,
     user_prompt: Optional[str] = None,
     db: Session = None
 ) -> ItineraryResponse:
@@ -498,15 +499,13 @@ def generate_smart_itinerary(
             ~Location.name.ilike("Khởi hành về%")
         ).all()
 
-    # 1. Xac dinh chinh xac Diem so 1: Diem xuat phat thuc te cua nguoi dung
-    dep_name, dep_lat, dep_lng, dep_addr = resolve_departure_point(start_location, start_lat, start_lng)
-
     # Luon su dung Gemini AI de thiet ke lich trinh ca nhan hoa (khong dap khuon dat san)
     use_ai_dynamic = True
 
     if use_ai_dynamic:
         ai_dest = target_dest or (province.name if province else "Tây Ninh")
-        enriched_prompt = user_prompt or "Khám phá danh lam thắng cảnh, ẩm thực đặc sản và quán cà phê đẹp"
+        budget_hint = f" Tài chính dự kiến cho cả chuyến đi là {budget:,} VNĐ ({num_days} ngày {num_nights} đêm), hãy chọn khách sạn và quán ăn phù hợp mức tài chính này." if budget and budget > 0 else ""
+        enriched_prompt = ((user_prompt or "Khám phá danh lam thắng cảnh, ẩm thực đặc sản và quán cà phê đẹp") + budget_hint).strip()
 
         dynamic_data = generate_dynamic_itinerary_with_gemini(
             destination=ai_dest,
@@ -546,10 +545,7 @@ def generate_smart_itinerary(
             ~Location.name.ilike("Khởi hành về%")
         ).all()
 
-        # Lay Diem so 1 (Xuat phat)
-        dep_loc = _get_or_create_departure_location(db, province.id, dep_name, dep_lat, dep_lng, dep_addr)
-
-        # Lay Diem so 2 (Khach san / Homestay / Resort): Uu tien khach san do Gemini AI de xuat neu xac thuc duoc tren Google Maps
+        # Lay Diem so 1 (Khach san / Homestay / Resort trung tam tai diem den)
         hotel_loc = None
         for d_chk in dynamic_data.get("days", []):
             for it_chk in d_chk.get("items", []):
@@ -809,6 +805,7 @@ def generate_smart_itinerary(
             num_nights=num_nights,
             status="planned",
             total_cost=total_cost,
+            budget=budget,
             days=days_result
         )
 
@@ -817,7 +814,6 @@ def generate_smart_itinerary(
     if not locations:
         raise ValueError("Chua co du lieu dia diem cho tinh thanh nay")
 
-    dep_loc = _get_or_create_departure_location(db, province.id, dep_name, dep_lat, dep_lng, dep_addr)
     hotel_loc = _get_central_hotel_for_province(db, province, locations)
 
     tourist_spots = [loc for loc in locations if loc.category in ["tourist_spot", "entertainment"]]
@@ -877,20 +873,19 @@ def generate_smart_itinerary(
             order += 1
 
         if day_idx == 1:
-            day_title = f"Ngày 1: Xuất phát đi {province.name}, Nhận phòng Khách sạn & Khám phá biểu tượng"
-            add_item(dep_loc, "06:30", f"Khởi hành xuất phát từ {start_location or 'vị trí hiện tại của bạn'} di chuyển đi {province.name}.", is_origin=True)
-            add_item(hotel_loc, "08:30", f"Đến {hotel_loc.name}, làm thủ tục gửi hành lý / nhận phòng khách sạn và nghỉ ngơi ít phút.")
+            day_title = f"Ngày 1: Nhận phòng Khách sạn & Khám phá biểu tượng {province.name}"
+            add_item(hotel_loc, "08:00", f"Đến {hotel_loc.name}, làm thủ tục gửi hành lý / nhận phòng khách sạn và nghỉ ngơi ít phút.", is_origin=True)
             add_item(get_nearest_unused(prev_loc, tourist_spots, beaches), "09:30", f"Tham quan địa danh biểu tượng nổi tiếng tại {province.name}.")
             add_item(get_nearest_unused(prev_loc, restaurants), "12:00", "Thưởng thức bữa trưa đặc sản trứ danh địa phương.")
             add_item(get_nearest_unused(prev_loc, beaches if beaches else tourist_spots, tourist_spots), "14:45", "Tham quan ngắm cảnh và chụp ảnh check-in buổi chiều.")
             add_item(get_nearest_unused(prev_loc, cafes, tourist_spots), "17:00", "Thư giãn thưởng thức cà phê ngắm hoàng hôn.")
             add_item(get_nearest_unused(prev_loc, restaurants, shopping), "19:00", "Thưởng thức ẩm thực tối và dạo phố đêm.")
         elif day_idx == num_days:
-            day_title = f"Ngày {day_idx}: Trả phòng Khách sạn, Mua đặc sản & Khởi hành trở về"
+            day_title = f"Ngày {day_idx}: Trả phòng Khách sạn, Mua đặc sản & Kết thúc hành trình"
             add_item(hotel_loc, "07:30", f"Làm thủ tục trả phòng (check-out) tại {hotel_loc.name}, chuẩn bị hành trình ngày cuối.", is_origin=True)
             add_item(get_nearest_unused(prev_loc, tourist_spots, beaches), "08:30", "Tham quan thắng cảnh buổi sáng trong lành.")
             add_item(get_nearest_unused(prev_loc, shopping, tourist_spots), "10:15", "Ghé chợ địa phương mua quà đặc sản mang về.")
-            add_item(get_nearest_unused(prev_loc, restaurants), "12:00", f"Thưởng thức bữa trưa đặc sản trên cung đường trở về lại {start_location or 'điểm xuất phát'}.")
+            add_item(get_nearest_unused(prev_loc, restaurants), "12:00", "Thưởng thức bữa trưa đặc sản địa phương.")
         else:
             day_title = f"Ngày {day_idx}: Trải nghiệm chuyên sâu & Cảnh sắc thiên nhiên {province.name}"
             add_item(hotel_loc, "07:30", f"Khởi hành buổi sáng từ {hotel_loc.name} bắt đầu lịch trình Ngày {day_idx}.", is_origin=True)
@@ -907,11 +902,7 @@ def generate_smart_itinerary(
         ))
 
     total_cost += num_days * 100000
-    trip_title = (
-        f"Hành trình {start_location} ➔ {province.name} ({num_days}N{num_nights}Đ)"
-        if start_location
-        else f"Lịch trình du lịch {province.name} {num_days}N{num_nights}Đ"
-    )
+    trip_title = f"Lịch trình khám phá {province.name} ({num_days}N{num_nights}Đ)"
     return ItineraryResponse(
         id=None,
         title=trip_title,
@@ -920,5 +911,6 @@ def generate_smart_itinerary(
         num_nights=num_nights,
         status="planned",
         total_cost=total_cost,
+        budget=budget,
         days=days_result
     )

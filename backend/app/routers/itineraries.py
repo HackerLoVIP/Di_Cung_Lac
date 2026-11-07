@@ -31,6 +31,7 @@ def generate_itinerary(req: ItineraryGenerateRequest, db: Session = Depends(get_
             start_lng=req.start_lng,
             num_days=req.num_days,
             num_nights=req.num_nights,
+            budget=req.budget,
             user_prompt=req.prompt,
             db=db,
         )

@@ -30,22 +30,44 @@ import {
   FaListUl,
   FaMapMarkedAlt,
   FaMagic,
+  FaCoins,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+
+const formatDate = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const getUpcomingWeekend = () => {
+  const today = new Date();
+  const day = today.getDay();
+  const diffToSat = (6 - day + 7) % 7 || 7;
+  const sat = new Date(today);
+  sat.setDate(today.getDate() + diffToSat);
+  const sun = new Date(sat);
+  sun.setDate(sat.getDate() + 1);
+  return { start: formatDate(sat), end: formatDate(sun) };
+};
 
 export const PlanTrip: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const defaultWeekend = useMemo(() => getUpcomingWeekend(), []);
+
   const savedTripId = searchParams.get('itineraryId');
   const destination = searchParams.get('destination') || '';
   const provinceId = searchParams.get('provinceId') ? Number(searchParams.get('provinceId')) : undefined;
   const numDays = Number(searchParams.get('days')) || 2;
   const numNights = searchParams.get('nights') !== null ? Number(searchParams.get('nights')) : Math.max(0, numDays - 1);
+  const budgetParam = searchParams.get('budget') ? Number(searchParams.get('budget')) : 3000000;
   const prompt = searchParams.get('prompt') || '';
-  const startDateStr = searchParams.get('startDate') || '';
-  const endDateStr = searchParams.get('endDate') || '';
+  const startDateStr = searchParams.get('startDate') || defaultWeekend.start;
+  const endDateStr = searchParams.get('endDate') || defaultWeekend.end;
 
   const hasTripTarget = Boolean(savedTripId || destination.trim() || provinceId);
 
@@ -73,8 +95,51 @@ export const PlanTrip: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'map' | 'timeline' | 'budget'>('timeline');
 
   const [editDest, setEditDest] = useState<string>(destination || 'Đà Lạt');
+  const [editStartDate, setEditStartDate] = useState<string>(startDateStr || defaultWeekend.start);
+  const [editEndDate, setEditEndDate] = useState<string>(endDateStr || defaultWeekend.end);
   const [editDays, setEditDays] = useState<number>(numDays || 2);
+  const [editNights, setEditNights] = useState<number>(numNights);
+  const [editBudget, setEditBudget] = useState<number>(budgetParam || 3000000);
   const [editPrompt, setEditPrompt] = useState<string>(prompt || '');
+
+  // Tự động tính số ngày & số đêm khi chọn Cuốn lịch (giống Trang chủ)
+  useEffect(() => {
+    if (!editStartDate || !editEndDate) return;
+    const s = new Date(editStartDate);
+    const e = new Date(editEndDate);
+    const diffTime = e.getTime() - s.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    const validDays = Math.max(1, Math.min(7, diffDays));
+    setEditDays(validDays);
+    setEditNights(Math.max(0, validDays - 1));
+  }, [editStartDate, editEndDate]);
+
+  const applyEditDatePreset = (preset: '1d' | 'weekend' | '3d2n' | '4d3n') => {
+    const today = new Date();
+    if (preset === '1d') {
+      const dates = getUpcomingWeekend();
+      setEditStartDate(dates.start);
+      setEditEndDate(dates.start);
+    } else if (preset === 'weekend') {
+      const dates = getUpcomingWeekend();
+      setEditStartDate(dates.start);
+      setEditEndDate(dates.end);
+    } else if (preset === '3d2n') {
+      const s = new Date(today);
+      s.setDate(today.getDate() + 3);
+      const e = new Date(s);
+      e.setDate(s.getDate() + 2);
+      setEditStartDate(formatDate(s));
+      setEditEndDate(formatDate(e));
+    } else if (preset === '4d3n') {
+      const s = new Date(today);
+      s.setDate(today.getDate() + 5);
+      const e = new Date(s);
+      e.setDate(s.getDate() + 3);
+      setEditStartDate(formatDate(s));
+      setEditEndDate(formatDate(e));
+    }
+  };
 
   // Expense Tracker State
   interface ExpenseItem {
@@ -262,6 +327,7 @@ export const PlanTrip: React.FC = () => {
           province_id: provinceId,
           num_days: numDays,
           num_nights: numNights,
+          budget: budgetParam || undefined,
           prompt: prompt,
         })
         .then((itinData) => {
@@ -269,6 +335,7 @@ export const PlanTrip: React.FC = () => {
           setItinerary(itinData);
           setEditDest(itinData.province?.name || destination || '');
           setEditDays(itinData.num_days || numDays);
+          if (itinData.budget) setEditBudget(itinData.budget);
           const pId = itinData.province?.id || 1;
           return axios
             .get(`/api/ai/weather?province_id=${pId}`)
@@ -287,7 +354,7 @@ export const PlanTrip: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [hasTripTarget, savedTripId, destination, provinceId, numDays, numNights, prompt]);
+  }, [hasTripTarget, savedTripId, destination, provinceId, numDays, numNights, budgetParam, prompt]);
 
   useEffect(() => {
     if (!itinerary) return;
@@ -405,8 +472,11 @@ export const PlanTrip: React.FC = () => {
               }
               const params = new URLSearchParams();
               params.set('destination', editDest.trim());
+              params.set('startDate', editStartDate);
+              params.set('endDate', editEndDate);
               params.set('days', String(editDays));
-              params.set('nights', String(Math.max(0, editDays - 1)));
+              params.set('nights', String(editNights));
+              params.set('budget', String(editBudget || 0));
               if (editPrompt.trim()) params.set('prompt', editPrompt.trim());
               navigate(`/plan?${params.toString()}`);
             }}
@@ -450,32 +520,129 @@ export const PlanTrip: React.FC = () => {
               </div>
             </div>
 
-            {/* Thời lượng & Yêu cầu AI */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 block">📅 Số ngày đi:</label>
-                <select
-                  value={editDays}
-                  onChange={(e) => setEditDays(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-amber-400 cursor-pointer"
-                >
-                  <option value={1}>1 Ngày (Đi về trong ngày)</option>
-                  <option value={2}>2 Ngày 1 Đêm (Cuối tuần)</option>
-                  <option value={3}>3 Ngày 2 Đêm (Khám phá sâu)</option>
-                  <option value={4}>4 Ngày 3 Đêm (Nghỉ dưỡng dài)</option>
-                </select>
+            {/* Cuốn lịch Thời gian chuyến đi (Giống Trang chủ) & Tài chính chuyến đi */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Cuốn lịch Thời gian */}
+              <div className="bg-emerald-50/50 border border-emerald-200/90 rounded-2xl p-4 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-emerald-950 uppercase flex items-center gap-1.5">
+                    <FaCalendarAlt className="text-emerald-600 text-sm" />
+                    <span>Thời gian (Ngày đi ➔ Ngày về)</span>
+                  </label>
+                  <span className="text-xs font-black text-amber-950 bg-amber-200 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    {editDays}N{editNights}Đ
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 bg-white border border-emerald-300 rounded-xl px-3 py-2 shadow-2xs">
+                  <input
+                    type="date"
+                    required
+                    value={editStartDate}
+                    min={formatDate(new Date())}
+                    onChange={(e) => {
+                      setEditStartDate(e.target.value);
+                      if (e.target.value > editEndDate) setEditEndDate(e.target.value);
+                    }}
+                    className="flex-1 bg-transparent border-none text-slate-900 font-extrabold text-xs sm:text-sm focus:outline-none cursor-pointer"
+                    title="Ngày khởi hành"
+                  />
+                  <span className="text-amber-500 font-black text-xs">➔</span>
+                  <input
+                    type="date"
+                    required
+                    value={editEndDate}
+                    min={editStartDate || formatDate(new Date())}
+                    onChange={(e) => setEditEndDate(e.target.value)}
+                    className="flex-1 bg-transparent border-none text-slate-900 font-extrabold text-xs sm:text-sm focus:outline-none cursor-pointer"
+                    title="Ngày trở về"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => applyEditDatePreset('weekend')}
+                    className="px-2.5 py-1 rounded-full bg-white hover:bg-amber-100 border border-slate-200 text-slate-700 text-[10px] font-bold transition cursor-pointer"
+                  >
+                    🗓️ Cuối tuần (2N1Đ)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyEditDatePreset('3d2n')}
+                    className="px-2.5 py-1 rounded-full bg-white hover:bg-amber-100 border border-slate-200 text-slate-700 text-[10px] font-bold transition cursor-pointer"
+                  >
+                    🌴 3 Ngày 2 Đêm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyEditDatePreset('4d3n')}
+                    className="px-2.5 py-1 rounded-full bg-white hover:bg-amber-100 border border-slate-200 text-slate-700 text-[10px] font-bold transition cursor-pointer"
+                  >
+                    ✈️ 4 Ngày 3 Đêm
+                  </button>
+                </div>
               </div>
 
-              <div className="sm:col-span-2 space-y-1">
-                <label className="text-xs font-bold text-slate-700 block">💡 Sở thích & Yêu cầu cho Gemini AI:</label>
-                <input
-                  type="text"
-                  value={editPrompt}
-                  onChange={(e) => setEditPrompt(e.target.value)}
-                  placeholder="VD: Thích ăn đặc sản địa phương, quán cà phê săn mây, nghỉ khách sạn trung tâm..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-amber-400"
-                />
+              {/* Tài chính chuyến đi */}
+              <div className="bg-amber-50/50 border border-amber-200/90 rounded-2xl p-4 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
+                    <FaCoins className="text-amber-600 text-sm" />
+                    <span>Tài chính chuyến đi (VNĐ)</span>
+                  </label>
+                  <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    {editBudget > 0 ? `${editBudget.toLocaleString('vi-VN')} đ` : 'Tự do'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 bg-white border border-amber-300 rounded-xl px-3 py-2 shadow-2xs">
+                  <input
+                    type="number"
+                    min={0}
+                    step={100000}
+                    value={editBudget || ''}
+                    onChange={(e) => setEditBudget(Math.max(0, Number(e.target.value)))}
+                    placeholder="Nhập tổng ngân sách dự kiến (VD: 3000000)"
+                    className="flex-1 bg-transparent border-none text-slate-900 font-extrabold text-xs sm:text-sm focus:outline-none"
+                  />
+                  <span className="text-xs font-bold text-slate-400">VNĐ</span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {[
+                    { label: '🌱 1.5 Triệu', val: 1500000 },
+                    { label: '✨ 3 Triệu', val: 3000000 },
+                    { label: '🏖️ 5 Triệu', val: 5000000 },
+                    { label: '👑 8 Triệu', val: 8000000 },
+                  ].map((b) => (
+                    <button
+                      key={b.val}
+                      type="button"
+                      onClick={() => setEditBudget(b.val)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition cursor-pointer border ${
+                        editBudget === b.val
+                          ? 'bg-amber-300 border-amber-500 text-amber-950 font-black'
+                          : 'bg-white hover:bg-amber-100 border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+            </div>
+
+            {/* Sở thích & Yêu cầu AI */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 block">💡 Sở thích & Yêu cầu thêm cho Gemini AI:</label>
+              <input
+                type="text"
+                value={editPrompt}
+                onChange={(e) => setEditPrompt(e.target.value)}
+                placeholder="VD: Thích ăn đặc sản địa phương, quán cà phê săn mây, nghỉ khách sạn trung tâm..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-amber-400"
+              />
             </div>
 
             <button
@@ -585,7 +752,7 @@ export const PlanTrip: React.FC = () => {
             </div>
           </div>
 
-          {/* Destination & Days Selector Card */}
+          {/* Destination, Calendar Dates & Trip Budget Selector Card */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -593,40 +760,31 @@ export const PlanTrip: React.FC = () => {
               nextParams.delete('itineraryId');
               nextParams.delete('provinceId');
               if (editDest.trim()) nextParams.set('destination', editDest.trim());
+              nextParams.set('startDate', editStartDate);
+              nextParams.set('endDate', editEndDate);
               nextParams.set('days', String(editDays));
-              nextParams.set('nights', String(Math.max(0, editDays - 1)));
+              nextParams.set('nights', String(editNights));
+              nextParams.set('budget', String(editBudget || 0));
               navigate(`/plan?${nextParams.toString()}`);
             }}
             className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 space-y-2"
           >
+            {/* Hàng 1: Điểm đến + Nút Cập nhật */}
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-red-500/15 text-red-600 flex items-center justify-center shrink-0">
                 <FaMapMarkerAlt className="text-red-600 text-xs" />
               </div>
-              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs focus-within:border-red-500 flex items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <span className="text-[9px] text-red-600 font-bold block uppercase leading-none mb-0.5">
-                    Điểm đến du lịch
-                  </span>
-                  <input
-                    type="text"
-                    value={editDest}
-                    onChange={(e) => setEditDest(e.target.value)}
-                    placeholder="Nhập tỉnh/thành phố đến..."
-                    className="w-full font-bold text-slate-900 bg-transparent focus:outline-none text-xs"
-                  />
-                </div>
-                <select
-                  value={editDays}
-                  onChange={(e) => setEditDays(Number(e.target.value))}
-                  className="bg-amber-50 border border-amber-200 text-amber-950 font-black text-[10px] rounded-lg px-1.5 py-1 focus:outline-none cursor-pointer shrink-0"
-                  title="Số ngày"
-                >
-                  <option value={1}>1N</option>
-                  <option value={2}>2N1Đ</option>
-                  <option value={3}>3N2Đ</option>
-                  <option value={4}>4N3Đ</option>
-                </select>
+              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs focus-within:border-red-500">
+                <span className="text-[9px] text-red-600 font-bold block uppercase leading-none mb-0.5">
+                  Điểm đến du lịch
+                </span>
+                <input
+                  type="text"
+                  value={editDest}
+                  onChange={(e) => setEditDest(e.target.value)}
+                  placeholder="Nhập tỉnh/thành phố đến..."
+                  className="w-full font-bold text-slate-900 bg-transparent focus:outline-none text-xs"
+                />
               </div>
               <button
                 type="submit"
@@ -635,32 +793,140 @@ export const PlanTrip: React.FC = () => {
                 Cập nhật
               </button>
             </div>
-          </form>
 
-          {/* Weather & Budget Quick Strip */}
-          <div className="flex items-center justify-between gap-2 text-xs">
-            {weather ? (
-              <div className="flex items-center gap-1.5 bg-amber-50/90 border border-amber-200/80 px-2 py-1 rounded-xl">
-                <span className="text-sm">{weather.icon || '☀️'}</span>
-                <div>
-                  <span className="font-black text-slate-800 text-xs mr-1">{weather.temp}</span>
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded uppercase">
-                    Live
+            {/* Hàng 2: Cuốn lịch Thời gian (Ngày đi ➔ Ngày về) giống Trang chủ */}
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
+                <FaCalendarAlt className="text-emerald-600 text-xs" />
+              </div>
+              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-2xs focus-within:border-emerald-500">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[9px] text-emerald-700 font-bold uppercase leading-none">
+                    Thời gian (Ngày đi ➔ Ngày về)
+                  </span>
+                  <span className="text-[9px] font-black text-amber-950 bg-amber-200 px-1.5 py-0.2 rounded-full">
+                    {editDays}N{editNights}Đ
                   </span>
                 </div>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="date"
+                    value={editStartDate}
+                    min={formatDate(new Date())}
+                    onChange={(e) => {
+                      setEditStartDate(e.target.value);
+                      if (e.target.value > editEndDate) setEditEndDate(e.target.value);
+                    }}
+                    className="bg-transparent border-none text-slate-900 font-extrabold text-[11px] focus:outline-none cursor-pointer w-[105px] p-0"
+                    title="Ngày khởi hành"
+                  />
+                  <span className="text-amber-500 font-bold text-[10px]">➔</span>
+                  <input
+                    type="date"
+                    value={editEndDate}
+                    min={editStartDate || formatDate(new Date())}
+                    onChange={(e) => setEditEndDate(e.target.value)}
+                    className="bg-transparent border-none text-slate-900 font-extrabold text-[11px] focus:outline-none cursor-pointer w-[105px] p-0"
+                    title="Ngày trở về"
+                  />
+                </div>
               </div>
-            ) : (
-              <span className="text-[10px] text-slate-400">☀️ Đang tải thời tiết...</span>
+            </div>
+
+            {/* Hàng 3: Tài chính chuyến đi (VNĐ) */}
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
+                <FaCoins className="text-amber-600 text-xs" />
+              </div>
+              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-2xs focus-within:border-amber-500 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <span className="text-[9px] text-amber-700 font-bold block uppercase leading-none mb-0.5">
+                    Tài chính chuyến đi (VNĐ)
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={100000}
+                    value={editBudget || ''}
+                    onChange={(e) => setEditBudget(Math.max(0, Number(e.target.value)))}
+                    placeholder="Nhập ngân sách dự kiến..."
+                    className="w-full font-extrabold text-slate-900 bg-transparent focus:outline-none text-xs"
+                  />
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {[1500000, 3000000, 5000000].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setEditBudget(val)}
+                      className={`px-1.5 py-0.5 rounded-md text-[9px] font-black cursor-pointer transition ${
+                        editBudget === val
+                          ? 'bg-amber-300 text-amber-950'
+                          : 'bg-slate-100 hover:bg-amber-100 text-slate-600'
+                      }`}
+                    >
+                      {(val / 1000000).toFixed(1).replace('.0', '')}tr
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </form>
+
+          {/* Bảng Tóm Tắt Tài Chính Chuyến Đi & Thời Tiết */}
+          <div className="bg-amber-50/70 border border-amber-200/90 rounded-2xl p-2.5 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <FaMoneyBillWave className="text-amber-700 text-xs shrink-0" />
+                <span className="text-[11px] font-black text-amber-950 uppercase">
+                  Tài chính & Chi phí dự kiến
+                </span>
+              </div>
+              {weather && (
+                <div className="flex items-center gap-1 bg-white border border-amber-200 px-2 py-0.5 rounded-lg text-[10px]">
+                  <span>{weather.icon || '☀️'}</span>
+                  <span className="font-black text-slate-800">{weather.temp}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-white p-2 rounded-xl border border-amber-200/70">
+                <span className="text-[9px] font-bold text-slate-400 uppercase block">Tài chính đặt ra</span>
+                <span className="font-black text-slate-900 text-xs">
+                  {editBudget > 0 ? `${editBudget.toLocaleString('vi-VN')} đ` : 'Chưa giới hạn'}
+                </span>
+              </div>
+              <div className="bg-white p-2 rounded-xl border border-amber-200/70">
+                <span className="text-[9px] font-bold text-slate-400 uppercase block">Ước tính lịch trình</span>
+                <span className="font-black text-amber-900 text-xs">
+                  {(totalPlanned || itinerary.total_cost).toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+            </div>
+
+            {editBudget > 0 && (
+              <div className="flex items-center justify-between text-[10px] px-1">
+                {editBudget >= (totalPlanned || itinerary.total_cost) ? (
+                  <span className="text-emerald-700 font-bold">
+                    ✅ Trong tầm tài chính (Còn dư {(editBudget - (totalPlanned || itinerary.total_cost)).toLocaleString('vi-VN')} đ)
+                  </span>
+                ) : (
+                  <span className="text-rose-600 font-bold">
+                    ⚠️ Vượt ngân sách dự kiến ({((totalPlanned || itinerary.total_cost) - editBudget).toLocaleString('vi-VN')} đ)
+                  </span>
+                )}
+              </div>
             )}
 
             <button
               type="button"
               onClick={() => setShowCostModal(true)}
-              className="pastel-yellow-badge hover:bg-amber-300 text-amber-950 font-black px-2.5 py-1 rounded-xl text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer"
+              className="w-full pastel-yellow-badge hover:bg-amber-300 text-amber-950 font-black py-1.5 rounded-xl text-[11px] flex items-center justify-center gap-1.5 shadow-2xs transition cursor-pointer"
               title="Mở Sổ Tay Chi Tiêu & Dự Toán"
             >
               <FaMoneyBillWave className="text-amber-700 text-xs" />
-              <span>{itinerary.total_cost.toLocaleString('vi-VN')} đ</span>
+              <span>Xem Sổ Chi Tiêu & Phân Bổ Chi Phí ({expenses.length} hạng mục)</span>
             </button>
           </div>
 

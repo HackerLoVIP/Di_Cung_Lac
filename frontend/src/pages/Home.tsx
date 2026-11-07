@@ -56,6 +56,7 @@ export const Home: React.FC = () => {
   const [endDate, setEndDate] = useState<string>(initialDates.end);
   const [numDays, setNumDays] = useState<number>(2);
   const [numNights, setNumNights] = useState<number>(1);
+  const [tripBudget, setTripBudget] = useState<number>(3000000);
 
   // Travel Preferences & Customization
   const [showPreferences, setShowPreferences] = useState<boolean>(false);
@@ -177,6 +178,7 @@ export const Home: React.FC = () => {
       endDate: endDate,
       days: String(numDays),
       nights: String(numNights),
+      budget: String(tripBudget || 0),
       prompt: fullPrompt
     });
 
@@ -230,7 +232,7 @@ export const Home: React.FC = () => {
               <div className="hidden lg:block w-px h-10 bg-slate-200/80 self-center" />
 
               {/* Segment 3: Ngày đi & Ngày về Cụ thể */}
-              <div className="px-4 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left min-w-[250px]">
+              <div className="px-4 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left min-w-[245px]">
                 <div className="flex items-center justify-between mb-0.5">
                   <label className="text-[10px] font-black uppercase tracking-wider text-amber-900/80 flex items-center gap-1">
                     <FaCalendarAlt className="text-emerald-500 text-xs" />
@@ -263,6 +265,31 @@ export const Home: React.FC = () => {
                     className="bg-transparent border-none text-slate-900 font-extrabold text-xs sm:text-sm focus:outline-none cursor-pointer w-28 p-0"
                     title="Ngày trở về"
                   />
+                </div>
+              </div>
+
+              <div className="hidden lg:block w-px h-10 bg-slate-200/80 self-center" />
+
+              {/* Segment 4: Tài chính chuyến đi */}
+              <div className="px-4 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left min-w-[185px]">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-amber-900/80 flex items-center gap-1 mb-0.5">
+                  <FaCoins className="text-amber-500 text-xs" />
+                  <span>Tài chính chuyến đi</span>
+                </label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={0}
+                    step={100000}
+                    value={tripBudget || ''}
+                    onChange={(e) => setTripBudget(Math.max(0, Number(e.target.value)))}
+                    placeholder="Nhập ngân sách (đ)"
+                    className="w-28 bg-transparent border-none text-slate-900 font-extrabold text-xs sm:text-sm focus:outline-none p-0"
+                    title="Nhập tổng tài chính dự kiến cho chuyến đi (VNĐ)"
+                  />
+                  <span className="text-[11px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md shrink-0">
+                    {tripBudget > 0 ? `${(tripBudget / 1000000).toFixed(1).replace('.0', '')}tr` : 'VNĐ'}
+                  </span>
                 </div>
               </div>
 

@@ -69,6 +69,7 @@ export const itineraryAPI = {
       start_lng?: number;
       num_days?: number;
       num_nights?: number;
+      budget?: number;
       prompt?: string;
     } | number,
     num_days?: number,

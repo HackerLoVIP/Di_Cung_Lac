@@ -12,6 +12,7 @@ class ItineraryGenerateRequest(BaseModel):
     start_lng: Optional[float] = None
     num_days: int = 3
     num_nights: int = 2
+    budget: Optional[int] = None
     prompt: Optional[str] = None
 
 class ItineraryItemResponse(BaseModel):
@@ -40,6 +41,7 @@ class ItineraryResponse(BaseModel):
     num_nights: int
     status: str = "planned"
     total_cost: int = 0
+    budget: Optional[int] = None
     days: List[ItineraryDayResponse] = []
     share_code: Optional[str] = None
     created_at: Optional[datetime] = None
