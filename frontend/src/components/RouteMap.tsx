@@ -198,7 +198,18 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         popupAnchor: [0, -38],
       });
 
-      const marker = L.marker([p.lat, p.lng], { icon: customIcon }).addTo(map);
+      const marker = L.marker([p.lat, p.lng], {
+        icon: customIcon,
+        draggable: Boolean(p.isOrigin),
+      }).addTo(map);
+
+      if (p.isOrigin) {
+        marker.on('dragend', () => {
+          const newPos = marker.getLatLng();
+          setUserLocation({ lat: newPos.lat, lng: newPos.lng });
+          toast.success(`Đã dời Điểm số 1 tới vị trí (${newPos.lat.toFixed(4)}, ${newPos.lng.toFixed(4)})!`);
+        });
+      }
 
       if (p.id) {
         markersRef.current[p.id] = marker;

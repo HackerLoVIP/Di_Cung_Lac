@@ -68,14 +68,15 @@ def _google_maps_geocode(
     query_str: str,
     ref_lat: Optional[float] = None,
     ref_lng: Optional[float] = None,
-    max_dist_km: float = 55.0,
-    max_span: float = 32000.0,
-) -> Optional[Tuple[float, float]]:
+    max_dist_km: float = 50.0,
+    max_span: float = 4500.0,
+) -> Optional[Tuple[float, float, Optional[str]]]:
     """
     Truy van truc tiep Google Maps Embed Engine (google.com/maps?q=...&output=embed&hl=vi)
-    de lay cap toa do GPS (lat, lng) chinh xac 100% tren nen ban do Google Maps.
-    Chi chap nhan ket qua khi do rong vung tim kiem (span) <= max_span (tuc Google Maps
-    xac dinh dung 1 dia danh / dia chi cu the, khong phai danh sach nhieu chi nhanh lien tinh).
+    de lay cap toa do GPS (lat, lng) va dia chi that chinh xac 100% tren nen ban do Google Maps:
+    - Uu tien 1: Khop chinh xac 1 POI (spotlit) -> lay [lat, lng] + dia chi that cua Google Maps.
+    - Uu tien 2: Khop danh sach POI (E7 integer coordinates) -> lay ghim POI dau tien nam trong ban kinh tinh.
+    - Uu tien 3: Khung nhin duong pho hep (span <= 4500m).
     """
     try:
         q = urllib.parse.quote(query_str)
@@ -83,16 +84,34 @@ def _google_maps_geocode(
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=4.5) as resp:
             html = resp.read().decode("utf-8", errors="ignore")
+
+            # 1. Exact spotlit POI match: ["0x...:0x...","Full Name, Real Address",[lat,lng]
+            spot = re.search(r'\["0x[0-9a-f]+:0x[0-9a-f]+","([^"]+)",\[(-?\d+\.\d+),(-?\d+\.\d+)\]', html)
+            if spot:
+                full_addr = spot.group(1)
+                lat = float(spot.group(2))
+                lng = float(spot.group(3))
+                if ref_lat is None or calculate_distance(ref_lat, ref_lng, lat, lng) <= max_dist_km:
+                    addr_part = full_addr.split(",", 1)[1].strip() if "," in full_addr else full_addr
+                    return round(lat, 6), round(lng, 6), addr_part
+
+            # 2. E7 POI pins list: "/g/...",null,[lat_e7,lng_e7]
+            e7_list = re.findall(r'"/[gm]/[^"]+",null,\[(-?\d{8,9}),(-?\d{9,10})\]', html)
+            for lat_s, lng_s in e7_list:
+                lat = int(lat_s) / 1e7
+                lng = int(lng_s) / 1e7
+                if ref_lat is None or calculate_distance(ref_lat, ref_lng, lat, lng) <= max_dist_km:
+                    return round(lat, 6), round(lng, 6), None
+
+            # 3. Tight street/address viewport match (span <= max_span)
             m = re.search(r"\[([0-9.]+),(-?\d+\.\d+),(-?\d+\.\d+)\]", html)
             if m:
                 span = float(m.group(1))
                 lng = float(m.group(2))
                 lat = float(m.group(3))
                 if span <= max_span:
-                    if ref_lat is not None and ref_lng is not None:
-                        if calculate_distance(ref_lat, ref_lng, lat, lng) > max_dist_km:
-                            return None
-                    return round(lat, 6), round(lng, 6)
+                    if ref_lat is None or calculate_distance(ref_lat, ref_lng, lat, lng) <= max_dist_km:
+                        return round(lat, 6), round(lng, 6), None
     except Exception:
         pass
     return None
@@ -181,13 +200,13 @@ def resolve_departure_point(
         )
 
     # 1. Geocode truc tiep tren Google Maps Embed neu nguoi dung nhap dia chi / quan / huyen / duong cu the
-    gm_res = _google_maps_geocode(f"{label}, Việt Nam", max_span=40000.0)
+    gm_res = _google_maps_geocode(f"{label}, Việt Nam", max_span=25000.0)
     if gm_res:
         return (
             f"Điểm xuất phát: {label}",
             gm_res[0],
             gm_res[1],
-            label
+            gm_res[2] or label
         )
 
     # 2. Geocode bang ArcGIS World Geocoder
@@ -326,28 +345,27 @@ def _verify_or_geocode_coords(
     raw_lat: Optional[float],
     raw_lng: Optional[float],
     address: Optional[str] = None,
-) -> Tuple[float, float, bool]:
+) -> Tuple[float, float, str, bool]:
     """
-    Kiem chung toa do GPS cua dia diem moi truc tiep tren Google Maps Embed Engine:
-    - Uu tien 1: Google Maps Embed (google.com/maps?q=...&output=embed) theo ten + dia chi + tinh thanh.
-    - Uu tien 2: OpenStreetMap Nominatim.
-    - Tra ve (lat, lng, is_verified_real).
+    Kiem chung toa do GPS va dia chi that cua dia diem moi truc tiep tren Google Maps Embed Engine:
+    - Uu tien 1: Google Maps Embed theo Ten dia diem + Ten tinh (khong de dia chi bia cua AI lam lech).
+    - Uu tien 2: Google Maps Embed theo Ten dia diem + Dia chi + Ten tinh.
+    - Uu tien 3: OpenStreetMap Nominatim.
+    - Tra ve (lat, lng, verified_address, is_verified_real).
     """
     p_lat = province.latitude or 10.7769
     p_lng = province.longitude or 106.7009
     clean_search = loc_name.split("(")[0].strip()
+    clean_addr = (address or "").split("(")[0].strip()
 
-    gm_queries = []
-    if address and address.strip():
-        gm_queries.append(f"{clean_search}, {address.strip()}, {province.name}")
-    gm_queries.append(f"{clean_search}, {province.name}")
-    if address and address.strip() and len(address.strip()) > 6:
-        gm_queries.append(f"{address.strip()}, {province.name}")
+    gm_queries = [f"{clean_search}, {province.name}"]
+    if clean_addr and len(clean_addr) > 4:
+        gm_queries.append(f"{clean_search}, {clean_addr}, {province.name}")
 
     for q_str in gm_queries:
-        gm_res = _google_maps_geocode(q_str, ref_lat=p_lat, ref_lng=p_lng, max_dist_km=55.0, max_span=30000.0)
+        gm_res = _google_maps_geocode(q_str, ref_lat=p_lat, ref_lng=p_lng, max_dist_km=50.0, max_span=4500.0)
         if gm_res:
-            return gm_res[0], gm_res[1], True
+            return gm_res[0], gm_res[1], (gm_res[2] or clean_addr or province.name), True
 
     # OpenStreetMap Nominatim fallback
     try:
@@ -359,8 +377,9 @@ def _verify_or_geocode_coords(
             if results:
                 g_lat = float(results[0]["lat"])
                 g_lng = float(results[0]["lon"])
-                if calculate_distance(p_lat, p_lng, g_lat, g_lng) <= 55.0:
-                    return round(g_lat, 6), round(g_lng, 6), True
+                if calculate_distance(p_lat, p_lng, g_lat, g_lng) <= 50.0:
+                    disp = results[0].get("display_name", clean_addr or province.name)
+                    return round(g_lat, 6), round(g_lng, 6), disp, True
     except Exception:
         pass
 
@@ -369,11 +388,11 @@ def _verify_or_geocode_coords(
             r_lat = float(raw_lat)
             r_lng = float(raw_lng)
             if calculate_distance(p_lat, p_lng, r_lat, r_lng) <= 35.0:
-                return round(r_lat, 6), round(r_lng, 6), False
+                return round(r_lat, 6), round(r_lng, 6), (clean_addr or province.name), False
         except Exception:
             pass
 
-    return p_lat, p_lng, False
+    return p_lat, p_lng, (clean_addr or province.name), False
 
 
 def _get_or_create_departure_location(
@@ -540,7 +559,7 @@ def generate_smart_itinerary(
                     if matched_h:
                         hotel_loc = matched_h
                         break
-                    h_lat, h_lng, h_ok = _verify_or_geocode_coords(
+                    h_lat, h_lng, h_addr, h_ok = _verify_or_geocode_coords(
                         h_name, province, it_chk.get("latitude"), it_chk.get("longitude"), it_chk.get("address")
                     )
                     if h_ok:
@@ -550,7 +569,7 @@ def generate_smart_itinerary(
                             name=h_name,
                             category="hotel",
                             description=it_chk.get("note", f"Lưu trú và nhận phòng tại {h_name}."),
-                            address=it_chk.get("address", province.name),
+                            address=h_addr,
                             latitude=h_lat,
                             longitude=h_lng,
                             image_url=h_img,
@@ -681,8 +700,8 @@ def generate_smart_itinerary(
                         continue
 
                 if not db_loc:
-                    # Xac thuc toa do cua dia diem moi do Gemini AI de xuat truc tiep tren Google Maps
-                    verified_lat, verified_lng, is_verified_real = _verify_or_geocode_coords(
+                    # Xac thuc toa do va dia chi that cua dia diem moi do Gemini AI de xuat truc tiep tren Google Maps
+                    verified_lat, verified_lng, verified_addr, is_verified_real = _verify_or_geocode_coords(
                         loc_name, province, itm.get("latitude"), itm.get("longitude"), itm.get("address")
                     )
                     if is_verified_real:
@@ -692,7 +711,7 @@ def generate_smart_itinerary(
                             name=loc_name,
                             category=loc_cat,
                             description=itm.get("note", ""),
-                            address=itm.get("address", province.name),
+                            address=verified_addr,
                             latitude=verified_lat,
                             longitude=verified_lng,
                             image_url=real_img,

@@ -76,6 +76,8 @@ export const PlanTrip: React.FC = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<'map' | 'timeline' | 'budget'>('timeline');
   const [isSwappedOrigin, setIsSwappedOrigin] = useState<boolean>(false);
+  const [editStart, setEditStart] = useState<string>(startLocation || 'TP. Hồ Chí Minh');
+  const [editDest, setEditDest] = useState<string>(destination || '');
 
   // Expense Tracker State
   interface ExpenseItem {
@@ -227,46 +229,96 @@ export const PlanTrip: React.FC = () => {
 
 
   useEffect(() => {
+    let isCancelled = false;
     setLoading(true);
     if (savedTripId) {
       // Tai lich trinh da luu
       itineraryAPI.getById(Number(savedTripId))
         .then((itinData) => {
+          if (isCancelled) return;
           setItinerary(itinData);
+          setEditDest(itinData.province?.name || '');
           const pId = itinData.province?.id || 1;
           return axios.get(`/api/ai/weather?province_id=${pId}`)
-            .then((r) => setWeather(r.data))
+            .then((r) => !isCancelled && setWeather(r.data))
             .catch(() => null);
         })
         .catch((err) => {
           console.error(err);
-          toast.error('Không thể tải lịch trình đã lưu');
+          if (!isCancelled) toast.error('Không thể tải lịch trình đã lưu');
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          if (!isCancelled) setLoading(false);
+        });
     } else {
-      itineraryAPI.generate({
-        destination: destination || undefined,
-        start_location: startLocation || undefined,
-        start_lat: startLat,
-        start_lng: startLng,
-        province_id: provinceId,
-        num_days: numDays,
-        num_nights: numNights,
-        prompt: prompt,
-      })
-        .then((itinData) => {
-          setItinerary(itinData);
-          const pId = itinData.province?.id || 1;
-          return axios.get(`/api/ai/weather?province_id=${pId}`)
-            .then((r) => setWeather(r.data))
-            .catch(() => null);
+      const runGenerate = (finalStartLoc?: string, finalLat?: number, finalLng?: number) => {
+        if (isCancelled) return;
+        itineraryAPI.generate({
+          destination: destination || undefined,
+          start_location: finalStartLoc || startLocation || undefined,
+          start_lat: finalLat ?? startLat,
+          start_lng: finalLng ?? startLng,
+          province_id: provinceId,
+          num_days: numDays,
+          num_nights: numNights,
+          prompt: prompt,
         })
-        .catch((err) => {
-          console.error(err);
-          toast.error('Có lỗi xảy ra khi tạo lịch trình AI');
-        })
-        .finally(() => setLoading(false));
+          .then((itinData) => {
+            if (isCancelled) return;
+            setItinerary(itinData);
+            setEditDest(itinData.province?.name || destination || '');
+            if (finalStartLoc) setEditStart(finalStartLoc);
+            const pId = itinData.province?.id || 1;
+            return axios.get(`/api/ai/weather?province_id=${pId}`)
+              .then((r) => !isCancelled && setWeather(r.data))
+              .catch(() => null);
+          })
+          .catch((err) => {
+            console.error(err);
+            if (!isCancelled) toast.error('Có lỗi xảy ra khi tạo lịch trình AI');
+          })
+          .finally(() => {
+            if (!isCancelled) setLoading(false);
+          });
+      };
+
+      // Neu chua co toa do GPS xuat phat va nguoi dung chua nhap dia chi cu the -> tu dong lay GPS thiet bi
+      const isDefaultStart = !startLocation || startLocation.trim().toLowerCase() === 'tp. hồ chí minh';
+      if (startLat === undefined && startLng === undefined && isDefaultStart && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            let detectedLabel = startLocation || 'TP. Hồ Chí Minh';
+            try {
+              const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&accept-language=vi`
+              );
+              if (res.ok) {
+                const data = await res.json();
+                const addr = data.address;
+                const road = addr?.road || '';
+                const suburb = addr?.suburb || addr?.city_district || addr?.quarter || addr?.town || '';
+                const city = addr?.city || addr?.state || addr?.province || 'TP. Hồ Chí Minh';
+                const parts = [road, suburb, city].filter(Boolean);
+                if (parts.length > 0) detectedLabel = parts.join(', ');
+              }
+            } catch {
+              // ignore
+            }
+            runGenerate(detectedLabel, latitude, longitude);
+          },
+          () => {
+            runGenerate(startLocation || undefined, startLat, startLng);
+          },
+          { enableHighAccuracy: true, timeout: 3500, maximumAge: 0 }
+        );
+      } else {
+        runGenerate(startLocation || undefined, startLat, startLng);
+      }
     }
+    return () => {
+      isCancelled = true;
+    };
   }, [savedTripId, destination, startLocation, startLat, startLng, provinceId, numDays, numNights, prompt]);
 
   useEffect(() => {
@@ -419,43 +471,84 @@ export const PlanTrip: React.FC = () => {
             </div>
           </div>
 
-          {/* Direction Inputs Card (Origin & Destination with connecting line) */}
-          <div className="relative bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 space-y-1.5">
+          {/* Direction Inputs Card (Interactive Origin & Destination with connecting line) */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const nextParams = new URLSearchParams(searchParams);
+              nextParams.delete('itineraryId');
+              nextParams.delete('startLat');
+              nextParams.delete('startLng');
+              if (editStart.trim()) nextParams.set('start', editStart.trim());
+              if (editDest.trim()) nextParams.set('destination', editDest.trim());
+              navigate(`/plan?${nextParams.toString()}`);
+            }}
+            className="relative bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 space-y-1.5"
+          >
             {/* Connecting Vertical Dotted Line */}
-            <div className="absolute left-[21px] top-[22px] bottom-[22px] w-0.5 border-l-2 border-dashed border-slate-300 pointer-events-none" />
+            <div className="absolute left-[21px] top-[22px] bottom-[52px] w-0.5 border-l-2 border-dashed border-slate-300 pointer-events-none" />
 
             {/* Origin Row */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pr-8">
               <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center shrink-0 z-10">
                 <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
               </div>
-              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 truncate shadow-2xs">
-                <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-0.5">Xuất phát</span>
-                <span className="font-bold text-slate-900 truncate block">{isSwappedOrigin ? itinerary.province.name : (startLocation || 'TP. Hồ Chí Minh')}</span>
+              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs focus-within:border-blue-500">
+                <span className="text-[9px] text-blue-600 font-bold block uppercase leading-none mb-0.5">Điểm số 1 (Vị trí xuất phát của bạn)</span>
+                <input
+                  type="text"
+                  value={editStart}
+                  onChange={(e) => setEditStart(e.target.value)}
+                  placeholder="Nhập số nhà, đường, quận/huyện..."
+                  className="w-full font-bold text-slate-900 bg-transparent focus:outline-none text-xs"
+                />
               </div>
             </div>
 
             {/* Destination Row */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pr-8">
               <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-600 flex items-center justify-center shrink-0 z-10">
                 <FaMapMarkerAlt className="text-red-600 text-xs" />
               </div>
-              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 truncate shadow-2xs">
-                <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-0.5">Điểm đến</span>
-                <span className="font-bold text-slate-900 truncate block">{isSwappedOrigin ? (startLocation || 'TP. Hồ Chí Minh') : itinerary.province.name}</span>
+              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs focus-within:border-red-500">
+                <span className="text-[9px] text-red-600 font-bold block uppercase leading-none mb-0.5">Điểm đến</span>
+                <input
+                  type="text"
+                  value={editDest}
+                  onChange={(e) => setEditDest(e.target.value)}
+                  placeholder="Nhập tỉnh/thành phố đến..."
+                  className="w-full font-bold text-slate-900 bg-transparent focus:outline-none text-xs"
+                />
               </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <span className="text-[10px] text-slate-400 italic mr-auto pl-7">
+                💡 Có thể kéo thả Ghim số 1 trên bản đồ
+              </span>
+              <button
+                type="submit"
+                className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-xs cursor-pointer transition"
+              >
+                Định vị & Cập nhật
+              </button>
             </div>
 
             {/* Swap Button on the right */}
             <button
               type="button"
-              onClick={() => setIsSwappedOrigin(!isSwappedOrigin)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white hover:bg-amber-50 text-slate-500 hover:text-amber-800 border border-slate-200 shadow-xs flex items-center justify-center cursor-pointer transition"
+              onClick={() => {
+                const tmp = editStart;
+                setEditStart(editDest);
+                setEditDest(tmp);
+                setIsSwappedOrigin(!isSwappedOrigin);
+              }}
+              className="absolute right-2.5 top-[38px] -translate-y-1/2 w-7 h-7 rounded-full bg-white hover:bg-amber-50 text-slate-500 hover:text-amber-800 border border-slate-200 shadow-xs flex items-center justify-center cursor-pointer transition"
               title="Đổi chiều xuất phát và điểm đến"
             >
               <FaExchangeAlt className="rotate-90 text-[10px]" />
             </button>
-          </div>
+          </form>
 
           {/* Google Maps Discovery Quick Category Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-xs">

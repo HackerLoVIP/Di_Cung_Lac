@@ -91,6 +91,8 @@ export const Home: React.FC = () => {
     provinceAPI.getAll().then((data) => {
       setProvinces(data);
     }).catch(console.error);
+    // Tu dong dinh vi GPS cua thiet bi ngay khi mo trang chu
+    handleGetCurrentLocation(true);
   }, []);
 
   // Recalculate days and nights when dates change
@@ -130,13 +132,13 @@ export const Home: React.FC = () => {
   };
 
   // GPS Geolocation with High-Accuracy Reverse Geocoding
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = (silent = false) => {
     if (!navigator.geolocation) {
-      toast.error('Trình duyệt của bạn không hỗ trợ định vị GPS');
+      if (!silent) toast.error('Trình duyệt của bạn không hỗ trợ định vị GPS');
       return;
     }
     setIsLocating(true);
-    toast('Đang dò tìm vị trí GPS chính xác của bạn...', { icon: '📍' });
+    if (!silent) toast('Đang dò tìm vị trí GPS chính xác của bạn...', { icon: '📍' });
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -155,7 +157,7 @@ export const Home: React.FC = () => {
             const parts = [road, suburb, detectedCity].filter(Boolean);
             const fullLabel = parts.length > 0 ? parts.join(', ') : detectedCity;
             setStartLocation(fullLabel);
-            toast.success(`Đã định vị GPS vị trí của bạn: ${fullLabel}!`);
+            if (!silent) toast.success(`Đã định vị GPS vị trí của bạn: ${fullLabel}!`);
             setIsLocating(false);
             return;
           }
@@ -173,14 +175,16 @@ export const Home: React.FC = () => {
         } else {
           setStartLocation('TP. Hồ Chí Minh');
         }
-        toast.success('Đã cập nhật tọa độ GPS xuất phát!');
+        if (!silent) toast.success('Đã cập nhật tọa độ GPS xuất phát!');
         setIsLocating(false);
       },
       () => {
         setIsLocating(false);
-        setStartCoords(null);
-        setStartLocation('TP. Hồ Chí Minh');
-        toast.error('Không thể truy cập GPS, đặt vị trí mặc định TP. Hồ Chí Minh');
+        if (!silent) {
+          setStartCoords(null);
+          setStartLocation('TP. Hồ Chí Minh');
+          toast.error('Không thể truy cập GPS, đặt vị trí mặc định TP. Hồ Chí Minh');
+        }
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -293,7 +297,7 @@ export const Home: React.FC = () => {
                   </label>
                   <button
                     type="button"
-                    onClick={handleGetCurrentLocation}
+                    onClick={() => handleGetCurrentLocation(false)}
                     disabled={isLocating}
                     className="text-[10px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-full transition shadow-2xs"
                     title="Tự động nhận diện GPS vị trí thực"
