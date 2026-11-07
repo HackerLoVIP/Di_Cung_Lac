@@ -501,9 +501,6 @@ export const PlanTrip: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
               Bạn muốn lên lịch trình khám phá tỉnh thành nào?
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500">
-              AI sẽ thiết kế lộ trình chi tiết từ Khách sạn lưu trú trung tâm (Vị trí số 1) tới các danh thắng, quán ăn đặc sản và cà phê đẹp chuẩn tọa độ Google Maps.
-            </p>
           </div>
 
           <form
@@ -711,14 +708,11 @@ export const PlanTrip: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
         <FaSpinner className="text-4xl text-emerald-500 animate-spin" />
         <h2 className="text-lg font-bold text-slate-700">
-          Gemini AI đang phân tích và thiết kế lịch trình {destination ? `tại ${destination}` : ''}...
+          Đang thiết kế lịch trình {destination ? `tại ${destination}` : ''}...
         </h2>
-        <p className="text-sm text-slate-400">
-          Đang xác thực tọa độ Google Maps thực tế cho khách sạn, điểm tham quan và ẩm thực đặc sản
-        </p>
       </div>
     );
   }

@@ -71,7 +71,7 @@ export const Explore: React.FC = () => {
             {/* Top Switcher */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="pastel-yellow-badge text-amber-950 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                🌟 Điểm đến xác thực
+                🌟 Khám phá điểm đến
               </span>
               
               {/* Province quick pills */}
@@ -98,9 +98,7 @@ export const Explore: React.FC = () => {
                 <h1 className="text-3xl sm:text-5xl font-black tracking-tight">{province.name}</h1>
                 <p className="text-slate-200 text-xs sm:text-sm max-w-2xl leading-relaxed">{province.description}</p>
                 <div className="flex items-center gap-4 pt-1 text-xs text-amber-300 font-bold">
-                  <span>📍 {locations.length} Địa điểm thực tế</span>
-                  <span>•</span>
-                  <span>⭐ 100% Xác thực GPS</span>
+                  <span>📍 {locations.length} Địa điểm nổi bật</span>
                 </div>
               </div>
 

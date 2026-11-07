@@ -56,7 +56,8 @@ export const AdminDashboard: React.FC = () => {
   const [newLocLng, setNewLocLng] = useState('108.4583');
   const [newLocCost, setNewLocCost] = useState('50000');
   const [newLocTips, setNewLocTips] = useState('');
-  const [newLocProvinceId, setNewLocProvinceId] = useState(2);
+  const [newLocProvinceName, setNewLocProvinceName] = useState('Đà Lạt');
+  const [provincesList, setProvincesList] = useState<any[]>([]);
 
   const isAdmin = Boolean(
     user &&
@@ -69,18 +70,20 @@ export const AdminDashboard: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [statsRes, usersRes, itinsRes, locsRes, revsRes] = await Promise.all([
+      const [statsRes, usersRes, itinsRes, locsRes, revsRes, provsRes] = await Promise.all([
         api.get('/admin/stats').catch(() => ({ data: null })),
         api.get('/admin/users').catch(() => ({ data: [] })),
         api.get('/admin/itineraries').catch(() => ({ data: [] })),
         api.get('/admin/locations').catch(() => ({ data: [] })),
         api.get('/admin/reviews').catch(() => ({ data: [] })),
+        api.get('/provinces').catch(() => ({ data: [] })),
       ]);
       setStats(statsRes.data);
       setUsersList(usersRes.data || []);
       setItinerariesList(itinsRes.data || []);
       setLocations(locsRes.data || []);
       setReviews(revsRes.data || []);
+      setProvincesList(provsRes.data || []);
     } catch (e) {
       console.error(e);
       toast.error('Không thể tải dữ liệu quản trị');
@@ -198,7 +201,7 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
       await api.post('/admin/locations', {
-        province_id: Number(newLocProvinceId),
+        province_name: newLocProvinceName.trim() || 'Đà Lạt',
         name: newLocName,
         category: newLocCategory,
         address: newLocAddress,
@@ -276,27 +279,26 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
-            <FaShieldAlt /> Trung Tâm Quản Trị Hệ Thống (Admin Role)
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white px-6 py-4 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg shrink-0">
+            <FaShieldAlt />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Quản Trị Website Đi Cùng Lạc</h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Quản lý tài khoản người dùng, cấp quyền VIP 1 Năm / 30 Ngày, quản lý lịch trình, kho địa điểm và đánh giá
-          </p>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900">Quản Trị Hệ Thống</h1>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setShowAddUserModal(true)}
-            className="flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black text-xs px-3.5 py-2 rounded-xl shadow-sm transition cursor-pointer whitespace-nowrap"
           >
             <FaUserPlus /> Thêm người dùng
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-sm transition cursor-pointer whitespace-nowrap"
           >
             <FaPlus /> Thêm địa điểm mới
           </button>
@@ -304,56 +306,56 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto whitespace-nowrap">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shrink-0 ${
             activeTab === 'overview'
               ? 'bg-emerald-600 text-white shadow-sm'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          <FaChartBar /> Tổng quan số liệu
+          <FaChartBar /> Tổng quan
         </button>
         <button
           onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shrink-0 ${
             activeTab === 'users'
               ? 'bg-emerald-600 text-white shadow-sm'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          <FaUsers /> Quản trị Người dùng ({usersList.length})
+          <FaUsers /> Người dùng ({usersList.length})
         </button>
         <button
           onClick={() => setActiveTab('itineraries')}
-          className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shrink-0 ${
             activeTab === 'itineraries'
               ? 'bg-emerald-600 text-white shadow-sm'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          <FaSuitcase /> Quản lý Chuyến đi ({itinerariesList.length})
+          <FaSuitcase /> Chuyến đi ({itinerariesList.length})
         </button>
         <button
           onClick={() => setActiveTab('locations')}
-          className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shrink-0 ${
             activeTab === 'locations'
               ? 'bg-emerald-600 text-white shadow-sm'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          <FaMapMarkerAlt /> Quản lý Địa điểm ({locations.length})
+          <FaMapMarkerAlt /> Địa điểm ({locations.length})
         </button>
         <button
           onClick={() => setActiveTab('reviews')}
-          className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer shrink-0 ${
             activeTab === 'reviews'
               ? 'bg-emerald-600 text-white shadow-sm'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          <FaStar /> Kiểm duyệt Đánh giá ({reviews.length})
+          <FaStar /> Đánh giá ({reviews.length})
         </button>
       </div>
 
@@ -511,9 +513,6 @@ export const AdminDashboard: React.FC = () => {
           <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="font-black text-slate-900 text-lg">Quản Trị Người Dùng & Phân Quyền VIP</h3>
-              <p className="text-xs text-slate-500">
-                Nâng cấp/thu hồi gói VIP (7 Ngày, 1 Tháng, 1 Năm - 365 Ngày), phân quyền Admin hoặc xóa tài khoản vi phạm
-              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -672,8 +671,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <div>
-              <h3 className="font-black text-slate-800 text-base">Danh Sách Lịch Trình Đã Tạo Trên Hệ Thống</h3>
-              <p className="text-xs text-slate-400">Xem chi tiết hoặc xóa các chuyến đi đã lưu của thành viên</p>
+              <h3 className="font-black text-slate-800 text-base">Danh Sách Chuyến Đi Đã Tạo</h3>
             </div>
             <span className="text-xs font-bold text-slate-500">Tổng: {itinerariesList.length} chuyến đi</span>
           </div>
@@ -740,8 +738,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-black text-slate-800 text-base">Danh Sách Địa Điểm Thực Tế ({filteredLocations.length})</h3>
-              <p className="text-xs text-slate-400">Toàn bộ tọa độ GPS, giá tham khảo và mẹo du lịch xác thực</p>
+              <h3 className="font-black text-slate-800 text-base">Danh Sách Địa Điểm ({filteredLocations.length})</h3>
             </div>
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
@@ -960,19 +957,21 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tỉnh/Thành</label>
-                  <select
-                    value={newLocProvinceId}
-                    onChange={(e) => setNewLocProvinceId(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none"
-                  >
-                    <option value={1}>Vũng Tàu</option>
-                    <option value={2}>Đà Lạt</option>
-                    <option value={3}>Tây Ninh</option>
-                    <option value={4}>TP. Hồ Chí Minh</option>
-                    <option value={5}>Pleiku</option>
-                    <option value={6}>Phú Quốc</option>
-                  </select>
+                  <label className="block font-bold text-slate-700 mb-1">Tỉnh/Thành (chọn hoặc gõ tỉnh mới)</label>
+                  <input
+                    type="text"
+                    list="admin-provinces-list"
+                    required
+                    value={newLocProvinceName}
+                    onChange={(e) => setNewLocProvinceName(e.target.value)}
+                    placeholder="VD: Đà Lạt, Nha Trang, Hà Nội..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <datalist id="admin-provinces-list">
+                    {provincesList.map((p: any) => (
+                      <option key={p.id} value={p.name} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div>

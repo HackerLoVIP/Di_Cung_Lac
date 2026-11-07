@@ -234,10 +234,6 @@ export const Home: React.FC = () => {
             </span>
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto font-normal">
-            Chọn tỉnh thành muốn đến, ngày đi ngày về cụ thể, tuỳ chọn phong cách & ngân sách. AI sẽ tự động phân tích và thiết kế lịch trình Google Maps tối ưu 100% dữ liệu thật.
-          </p>
-
           {/* Traveloka / Booking Styled Horizontal Floating Search Bar */}
           <div className="mt-8 max-w-4xl mx-auto space-y-3.5">
             <form
@@ -500,9 +496,7 @@ export const Home: React.FC = () => {
               <span>🌟 Điểm đến nổi tiếng</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Khám Phá Thành Phố Du Lịch Hàng Đầu</h2>
-            <p className="text-slate-500 text-sm mt-1">Được tích hợp sẵn toạ độ, món ngon đặc sản và kinh nghiệm du lịch thực tế</p>
           </div>
-          <span className="text-xs font-bold text-slate-400 hidden sm:block">100% Địa điểm xác thực</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -523,9 +517,6 @@ export const Home: React.FC = () => {
               <div className="absolute top-5 left-5 right-5 flex items-center justify-between">
                 <span className="text-xs bg-white/90 backdrop-blur-md text-amber-950 font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
                   ⭐ 4.9 • Điểm đến hot
-                </span>
-                <span className="text-xs bg-slate-900/60 backdrop-blur-md text-white font-bold px-3 py-1 rounded-full">
-                  Xác thực GPS
                 </span>
               </div>
 

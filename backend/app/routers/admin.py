@@ -25,7 +25,8 @@ def verify_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 class LocationCreateAdmin(BaseModel):
-    province_id: int
+    province_id: Optional[int] = None
+    province_name: Optional[str] = None
     name: str
     category: str
     address: str
@@ -248,8 +249,27 @@ def list_locations(db: Session = Depends(get_db), admin: User = Depends(verify_a
 
 @router.post("/locations", status_code=status.HTTP_201_CREATED)
 def create_location(data: LocationCreateAdmin, db: Session = Depends(get_db), admin: User = Depends(verify_admin)):
+    pid = data.province_id
+    if data.province_name and data.province_name.strip():
+        pname = data.province_name.strip()
+        prov = db.query(Province).filter(func.lower(Province.name) == pname.lower()).first()
+        if not prov:
+            slug = pname.lower().replace(" ", "-")
+            prov = Province(
+                name=pname,
+                slug=slug,
+                description=f"Điểm đến du lịch {pname}",
+                image_url=data.image_url or "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800"
+            )
+            db.add(prov)
+            db.flush()
+        pid = prov.id
+
+    if not pid:
+        pid = 1
+
     new_loc = Location(
-        province_id=data.province_id,
+        province_id=pid,
         name=data.name,
         category=data.category,
         address=data.address,
