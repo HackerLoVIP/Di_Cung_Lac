@@ -5,13 +5,16 @@ const api = axios.create({
   baseURL: '/api',
 });
 
-api.interceptors.request.use((config) => {
+const attachAuthHeader = (config: any) => {
   const token = localStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+};
+
+api.interceptors.request.use(attachAuthHeader);
+axios.interceptors.request.use(attachAuthHeader);
 
 export const authAPI = {
   login: async (email: string, password: string) => {
@@ -142,6 +145,10 @@ export const paymentAPI = {
   },
   checkStatus: async (orderCode: string) => {
     const res = await api.get(`/payments/check-status/${orderCode}`);
+    return res.data;
+  },
+  simulatePay: async (orderCode: string) => {
+    const res = await api.post(`/payments/simulate-pay/${orderCode}`);
     return res.data;
   },
 };

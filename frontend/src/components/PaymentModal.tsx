@@ -37,11 +37,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { user, login } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<string>('vip_1month');
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [checking, setChecking] = useState<boolean>(false);
   const [simulating, setSimulating] = useState<boolean>(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -59,6 +58,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       try {
         const res = await paymentAPI.checkStatus(order.order_code);
         if (res.is_paid) {
+          await refreshUser();
           toast.success('🎉 Thanh toán thành công! Bạn đã là thành viên VIP Travel Pro');
           setOrder((prev) => (prev ? { ...prev, status: 'completed' } : null));
           clearInterval(interval);
@@ -106,6 +106,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       toast.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSimulatePay = async () => {
+    if (!order) return;
+    setSimulating(true);
+    try {
+      await paymentAPI.simulatePay(order.order_code);
+      await refreshUser();
+      toast.success('🎉 Đã kích hoạt thành công gói VIP Travel Pro!');
+      setOrder((prev) => (prev ? { ...prev, status: 'completed' } : null));
+      if (onSuccess) onSuccess();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Không thể xác nhận thanh toán lúc này');
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -214,50 +230,60 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 </div>
               </button>
 
-              {/* Goi tron doi */}
+              {/* Goi 1 nam (365 ngay) */}
               <button
                 type="button"
-                onClick={() => setSelectedPlan('vip_lifetime')}
+                onClick={() => setSelectedPlan('vip_1year')}
                 className={`p-4 sm:p-5 rounded-2xl border-2 cursor-pointer transition-all text-center space-y-2 relative flex flex-col items-center justify-between ${
-                  selectedPlan === 'vip_lifetime'
+                  selectedPlan === 'vip_1year'
                     ? 'border-amber-500 bg-amber-50/90 ring-4 ring-amber-300/60 shadow-lg scale-102'
                     : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30 bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trọn đời</span>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_lifetime' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
-                    {selectedPlan === 'vip_lifetime' && <div className="w-2 h-2 rounded-full bg-white" />}
+                  <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Tiết kiệm</span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'vip_1year' ? 'border-amber-600 bg-amber-500' : 'border-slate-300'}`}>
+                    {selectedPlan === 'vip_1year' && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
                 </div>
                 <div className="py-2">
-                  <p className="text-base font-black text-slate-900">Vĩnh viễn</p>
+                  <p className="text-base font-black text-slate-900">1 Năm (365 Ngày)</p>
                   <p className="text-lg font-black text-amber-900 mt-0.5">149.000 đ</p>
                 </div>
               </button>
             </div>
 
-            {/* Quyen loi VIP */}
+            {/* So sanh quyen loi Tai khoan Thuong vs VIP Travel Pro */}
             <div className="pastel-card p-5 rounded-2xl border border-amber-200/80 space-y-3 text-xs sm:text-sm">
               <p className="font-black text-slate-800 text-xs uppercase tracking-wider text-amber-900 flex items-center gap-2">
-                <FaBolt className="text-amber-500 text-sm" /> Đặc quyền độc quyền của thành viên VIP:
+                <FaBolt className="text-amber-500 text-sm" /> Phân quyền Tài khoản Thường & Đặc quyền VIP Travel Pro:
               </p>
-              <ul className="space-y-2 text-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="bg-white/80 p-3 rounded-xl border border-slate-200 space-y-1.5">
+                  <span className="font-black text-slate-600 uppercase block text-[11px]">👤 Tài khoản Thường (Miễn phí)</span>
+                  <p className="text-slate-600">• Lập lịch trình tối đa <b>2 Ngày 1 Đêm (2N1Đ)</b></p>
+                  <p className="text-slate-600">• Lưu tối đa <b>2 chuyến đi</b> vào Chuyến đi của tôi</p>
+                  <p className="text-slate-600">• Xem dự toán cơ bản (Khóa thêm khoản chi & In PDF)</p>
+                </div>
+                <div className="bg-amber-100/70 p-3 rounded-xl border border-amber-300 space-y-1.5">
+                  <span className="font-black text-amber-950 uppercase block text-[11px]">👑 Thành viên VIP (7N / 1 Tháng / 1 Năm)</span>
+                  <p className="text-amber-950">• Mở khóa lịch trình dài ngày <b>3N2Đ, 4N3Đ đến 7 Ngày</b></p>
+                  <p className="text-amber-950">• Lưu <b>không giới hạn</b> lịch trình vào Chuyến đi của tôi</p>
+                  <p className="text-amber-950">• Mở khóa <b>Sổ Chi Tiêu chi tiết & Xuất file PDF</b></p>
+                </div>
+              </div>
+              <ul className="space-y-1.5 text-slate-700 pt-1">
                 <li className="flex items-center gap-2.5">
-                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-base" />
-                  <span>AI tạo lịch trình dài ngày không giới hạn & đề xuất ẩm thực sâu sát thực tế</span>
+                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-sm" />
+                  <span>AI thiết kế lịch trình dài ngày không giới hạn & cân đối tài chính chuyên sâu</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-base" />
-                  <span>Tự động tính toán & tối ưu hóa cung đường Google Maps thông minh nhất</span>
+                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-sm" />
+                  <span>Mở khóa Sổ Tay Chi Tiêu nhóm, ghi chép thực chi & In / Xuất PDF lịch trình</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-base" />
-                  <span>Quản lý sổ tay chi tiêu nhóm, xuất file PDF & Lịch trình Offline</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-base" />
-                  <span>Huy hiệu <b>VIP Gold</b> cạnh tên tài khoản trên toàn bộ chuyến đi</span>
+                  <FaCheckCircle className="text-emerald-500 flex-shrink-0 text-sm" />
+                  <span>Huy hiệu <b>VIP Pro 👑</b> cạnh tên tài khoản trong suốt thời hạn gói (7 ngày / 30 ngày / 1 năm)</span>
                 </li>
               </ul>
             </div>
@@ -340,6 +366,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <p className="text-[11px] text-slate-400 italic text-center">
                   * Quét mã QR trên app ngân hàng để thanh toán nhanh. Sau khi chuyển, hệ thống sẽ kích hoạt VIP trong 3 - 5 giây!
                 </p>
+
+                <button
+                  type="button"
+                  onClick={handleSimulatePay}
+                  disabled={simulating}
+                  className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition cursor-pointer disabled:opacity-50"
+                >
+                  {simulating ? <FaSpinner className="animate-spin" /> : <FaFlask />}
+                  <span>Xác nhận đã chuyển khoản (Kích hoạt VIP ngay)</span>
+                </button>
               </div>
             </div>
           </div>

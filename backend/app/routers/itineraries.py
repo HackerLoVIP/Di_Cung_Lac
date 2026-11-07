@@ -1,4 +1,5 @@
 import secrets
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -10,7 +11,7 @@ from app.schemas.itinerary import (
 )
 from app.schemas.location import LocationResponse
 from app.schemas.province import ProvinceResponse
-from app.services.auth import get_current_user
+from app.services.auth import get_current_user, get_optional_current_user
 from app.services.planner import (
     generate_smart_itinerary,
     calculate_distance,
@@ -19,9 +20,28 @@ from app.services.planner import (
 
 router = APIRouter(prefix="/api/itineraries", tags=["Itineraries"])
 
+ADMIN_EMAILS = {"haidangdmc123@gmail.com", "tronghieu3443@gmail.com", "admin@dicunglac.vn"}
+
+
+def _is_vip_or_admin(user: Optional[User]) -> bool:
+    if not user:
+        return False
+    if user.role == "admin" or user.email in ADMIN_EMAILS:
+        return True
+    return bool(user.is_vip)
+
 
 @router.post("/generate", response_model=ItineraryResponse)
-def generate_itinerary(req: ItineraryGenerateRequest, db: Session = Depends(get_db)):
+def generate_itinerary(
+    req: ItineraryGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    if req.num_days > 2 and not _is_vip_or_admin(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Tài khoản Thường chỉ hỗ trợ lập lịch trình tối đa 2 Ngày 1 Đêm. Vui lòng nâng cấp gói VIP Travel Pro để mở khóa lịch trình dài ngày (3 - 7 ngày)!",
+        )
     try:
         itinerary = generate_smart_itinerary(
             province_id=req.province_id,
@@ -46,6 +66,14 @@ def save_itinerary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not _is_vip_or_admin(current_user):
+        existing_count = db.query(Itinerary).filter(Itinerary.user_id == current_user.id).count()
+        if existing_count >= 2:
+            raise HTTPException(
+                status_code=403,
+                detail="Tài khoản Thường chỉ được lưu tối đa 2 lịch trình trong Chuyến đi của tôi. Vui lòng nâng cấp gói VIP Travel Pro để lưu không giới hạn!",
+            )
+
     share_code = secrets.token_urlsafe(8)
     new_itinerary = Itinerary(
         user_id=current_user.id,

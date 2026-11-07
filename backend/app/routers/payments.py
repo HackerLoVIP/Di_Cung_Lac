@@ -27,10 +27,15 @@ PLANS_CONFIG = {
         "amount": 49000,
         "days": 30
     },
-    "vip_lifetime": {
-        "name": "Gói Khám Phá Trọn Đời (Lifetime)",
+    "vip_1year": {
+        "name": "Gói VIP Travel Pro (1 Năm - 365 Ngày)",
         "amount": 149000,
-        "days": 3650
+        "days": 365
+    },
+    "vip_lifetime": {
+        "name": "Gói VIP Travel Pro (1 Năm - 365 Ngày)",
+        "amount": 149000,
+        "days": 365
     }
 }
 
@@ -105,6 +110,35 @@ def check_payment_status(
         "amount": transaction.amount,
         "is_paid": transaction.status == "completed"
     }
+
+
+@router.post("/simulate-pay/{order_code}")
+def simulate_payment_success(
+    order_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    transaction = db.query(PaymentTransaction).filter(
+        PaymentTransaction.order_code == order_code,
+        PaymentTransaction.user_id == current_user.id
+    ).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
+
+    plan = PLANS_CONFIG.get(transaction.plan_type, {"days": 30})
+    current_user.is_vip = 1
+    current_user.vip_expiry = datetime.datetime.now() + datetime.timedelta(days=plan["days"])
+    transaction.status = "completed"
+    transaction.paid_at = datetime.datetime.now()
+    db.commit()
+    db.refresh(current_user)
+    return {
+        "success": True,
+        "is_paid": True,
+        "vip_expiry": current_user.vip_expiry,
+        "message": f"Đã kích hoạt thành công {plan.get('name', 'Gói VIP')}!"
+    }
+
 
 
 @router.post("/webhook")

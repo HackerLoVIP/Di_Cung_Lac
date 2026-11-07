@@ -71,6 +71,7 @@ def login_with_google(req: GoogleLoginRequest, db: Session = Depends(get_db)):
         )
 
     # Tim hoac tao nguoi dung
+    admin_emails = ["haidangdmc123@gmail.com", "tronghieu3443@gmail.com", "admin@dicunglac.vn"]
     user = db.query(User).filter(User.email == email).first()
     if not user:
         user = User(
@@ -78,14 +79,21 @@ def login_with_google(req: GoogleLoginRequest, db: Session = Depends(get_db)):
             password_hash=get_password_hash("google_auth_oauth_secret"),
             full_name=full_name or email.split("@")[0],
             avatar_url=avatar_url,
-            role="user"
+            role="admin" if email in admin_emails else "user",
+            is_vip=1 if email in admin_emails else 0
         )
         db.add(user)
         db.commit()
         db.refresh(user)
     else:
+        updated = False
         if avatar_url and not user.avatar_url:
             user.avatar_url = avatar_url
+            updated = True
+        if email in admin_emails and user.role != "admin":
+            user.role = "admin"
+            updated = True
+        if updated:
             db.commit()
             db.refresh(user)
 
@@ -93,5 +101,11 @@ def login_with_google(req: GoogleLoginRequest, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
+def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    import datetime
+    if current_user.is_vip and current_user.vip_expiry:
+        if current_user.vip_expiry < datetime.datetime.now():
+            current_user.is_vip = 0
+            db.commit()
+            db.refresh(current_user)
     return current_user

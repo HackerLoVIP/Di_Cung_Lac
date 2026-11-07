@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { provinceAPI } from '../services/api';
 import { Province } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { PaymentModal } from '../components/PaymentModal';
 import {
   FaMapMarkerAlt,
   FaCalendarAlt,
@@ -27,7 +29,17 @@ import toast from 'react-hot-toast';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [provinces, setProvinces] = useState<Province[]>([]);
+  const [showVipModal, setShowVipModal] = useState<boolean>(false);
+
+  const isVipOrAdmin = Boolean(
+    user &&
+      (user.is_vip === 1 ||
+        user.role === 'admin' ||
+        user.email === 'haidangdmc123@gmail.com' ||
+        user.email === 'tronghieu3443@gmail.com')
+  );
   
   // Destination State
   const [destination, setDestination] = useState<string>('Tây Ninh');
@@ -110,20 +122,30 @@ export const Home: React.FC = () => {
       const dates = getUpcomingWeekend();
       setStartDate(dates.start);
       setEndDate(dates.end);
-    } else if (preset === '3d2n') {
-      const s = new Date(today);
-      s.setDate(today.getDate() + 3);
-      const e = new Date(s);
-      e.setDate(s.getDate() + 2);
-      setStartDate(formatDate(s));
-      setEndDate(formatDate(e));
-    } else if (preset === '4d3n') {
-      const s = new Date(today);
-      s.setDate(today.getDate() + 5);
-      const e = new Date(s);
-      e.setDate(s.getDate() + 3);
-      setStartDate(formatDate(s));
-      setEndDate(formatDate(e));
+    } else if (preset === '3d2n' || preset === '4d3n') {
+      if (!isVipOrAdmin) {
+        toast('👑 Lịch trình dài ngày (từ 3 ngày trở lên) dành cho thành viên VIP Travel Pro! Tài khoản thường hỗ trợ tối đa 2 Ngày 1 Đêm.', {
+          icon: '🔒',
+          duration: 4500,
+        });
+        setShowVipModal(true);
+        return;
+      }
+      if (preset === '3d2n') {
+        const s = new Date(today);
+        s.setDate(today.getDate() + 3);
+        const e = new Date(s);
+        e.setDate(s.getDate() + 2);
+        setStartDate(formatDate(s));
+        setEndDate(formatDate(e));
+      } else {
+        const s = new Date(today);
+        s.setDate(today.getDate() + 5);
+        const e = new Date(s);
+        e.setDate(s.getDate() + 3);
+        setStartDate(formatDate(s));
+        setEndDate(formatDate(e));
+      }
     }
   };
 
@@ -132,6 +154,15 @@ export const Home: React.FC = () => {
     const dest = destination.trim();
     if (!dest) {
       toast.error('Vui lòng nhập điểm đến bạn muốn đi!');
+      return;
+    }
+
+    if (numDays > 2 && !isVipOrAdmin) {
+      toast('👑 Tài khoản Thường chỉ hỗ trợ lập lịch trình tối đa 2 Ngày 1 Đêm! Hãy nâng cấp gói VIP Travel Pro để mở khóa lịch trình 3 - 7 ngày.', {
+        icon: '🔒',
+        duration: 4500,
+      });
+      setShowVipModal(true);
       return;
     }
 
@@ -352,14 +383,14 @@ export const Home: React.FC = () => {
                 onClick={() => applyDatePreset('3d2n')}
                 className="px-3 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
               >
-                🚀 3 Ngày 2 Đêm tuần sau
+                🚀 3 Ngày 2 Đêm {!isVipOrAdmin && '👑'}
               </button>
               <button
                 type="button"
                 onClick={() => applyDatePreset('4d3n')}
                 className="px-3 py-1 rounded-full bg-white/90 hover:bg-amber-100 border border-slate-200/80 text-slate-700 text-[11px] font-semibold transition cursor-pointer shadow-2xs"
               >
-                🏖️ Kỳ nghỉ 4 Ngày 3 Đêm
+                🏖️ Kỳ nghỉ 4 Ngày 3 Đêm {!isVipOrAdmin && '👑'}
               </button>
             </div>
 
@@ -559,6 +590,12 @@ export const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <PaymentModal
+        isOpen={showVipModal}
+        onClose={() => setShowVipModal(false)}
+        onSuccess={() => setShowVipModal(false)}
+      />
     </div>
   );
 };

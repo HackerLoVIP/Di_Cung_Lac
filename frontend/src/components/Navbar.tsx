@@ -6,7 +6,7 @@ import { PaymentModal } from './PaymentModal';
 import { PeanutRider } from './PeanutRider';
 
 export const Navbar: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const navigate = useNavigate();
@@ -123,8 +123,8 @@ export const Navbar: React.FC = () => {
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         onSuccess={() => {
+          refreshUser();
           setShowPaymentModal(false);
-          window.location.reload();
         }}
       />
 

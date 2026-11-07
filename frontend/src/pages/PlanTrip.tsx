@@ -5,6 +5,7 @@ import { itineraryAPI, expenseAPI } from '../services/api';
 import { Itinerary } from '../types';
 import { ItineraryTimeline } from '../components/ItineraryTimeline';
 import { RouteMap } from '../components/RouteMap';
+import { PaymentModal } from '../components/PaymentModal';
 import { useAuth } from '../contexts/AuthContext';
 import {
   FaBookmark,
@@ -87,7 +88,16 @@ export const PlanTrip: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(hasTripTarget);
   const [saving, setSaving] = useState<boolean>(false);
   const [showCostModal, setShowCostModal] = useState<boolean>(false);
+  const [showVipModal, setShowVipModal] = useState<boolean>(false);
   const [selectedDay, setSelectedDay] = useState<number>(1);
+
+  const isVipOrAdmin = Boolean(
+    user &&
+      (user.is_vip === 1 ||
+        user.role === 'admin' ||
+        user.email === 'haidangdmc123@gmail.com' ||
+        user.email === 'tronghieu3443@gmail.com')
+  );
   const [activeLocationId, setActiveLocationId] = useState<number | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [transitMode, setTransitMode] = useState<'motorcycle' | 'car' | 'walking'>('motorcycle');
@@ -124,20 +134,30 @@ export const PlanTrip: React.FC = () => {
       const dates = getUpcomingWeekend();
       setEditStartDate(dates.start);
       setEditEndDate(dates.end);
-    } else if (preset === '3d2n') {
-      const s = new Date(today);
-      s.setDate(today.getDate() + 3);
-      const e = new Date(s);
-      e.setDate(s.getDate() + 2);
-      setEditStartDate(formatDate(s));
-      setEditEndDate(formatDate(e));
-    } else if (preset === '4d3n') {
-      const s = new Date(today);
-      s.setDate(today.getDate() + 5);
-      const e = new Date(s);
-      e.setDate(s.getDate() + 3);
-      setEditStartDate(formatDate(s));
-      setEditEndDate(formatDate(e));
+    } else if (preset === '3d2n' || preset === '4d3n') {
+      if (!isVipOrAdmin) {
+        toast('👑 Lịch trình dài ngày (từ 3 ngày trở lên) dành cho thành viên VIP Travel Pro! Tài khoản thường hỗ trợ tối đa 2 Ngày 1 Đêm.', {
+          icon: '🔒',
+          duration: 4500,
+        });
+        setShowVipModal(true);
+        return;
+      }
+      if (preset === '3d2n') {
+        const s = new Date(today);
+        s.setDate(today.getDate() + 3);
+        const e = new Date(s);
+        e.setDate(s.getDate() + 2);
+        setEditStartDate(formatDate(s));
+        setEditEndDate(formatDate(e));
+      } else {
+        const s = new Date(today);
+        s.setDate(today.getDate() + 5);
+        const e = new Date(s);
+        e.setDate(s.getDate() + 3);
+        setEditStartDate(formatDate(s));
+        setEditEndDate(formatDate(e));
+      }
     }
   };
 
@@ -196,6 +216,14 @@ export const PlanTrip: React.FC = () => {
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isVipOrAdmin) {
+      toast('👑 Tính năng thêm khoản chi & quản lý thực chi chuyên sâu dành riêng cho thành viên VIP Travel Pro!', {
+        icon: '🔒',
+        duration: 4000,
+      });
+      setShowVipModal(true);
+      return;
+    }
     if (!newTitle.trim()) {
       toast.error('Vui lòng nhập tên khoản chi');
       return;
@@ -342,9 +370,16 @@ export const PlanTrip: React.FC = () => {
             .then((r) => !isCancelled && setWeather(r.data))
             .catch(() => null);
         })
-        .catch((err) => {
+        .catch((err: any) => {
           console.error(err);
-          if (!isCancelled) toast.error('Có lỗi xảy ra khi tạo lịch trình AI');
+          if (!isCancelled) {
+            if (err?.response?.status === 403) {
+              toast(err?.response?.data?.detail || 'Tính năng dành cho thành viên VIP Travel Pro!', { icon: '🔒', duration: 4500 });
+              setShowVipModal(true);
+            } else {
+              toast.error('Có lỗi xảy ra khi tạo lịch trình AI');
+            }
+          }
         })
         .finally(() => {
           if (!isCancelled) setLoading(false);
@@ -422,9 +457,17 @@ export const PlanTrip: React.FC = () => {
       }
       toast.success('Đã lưu lịch trình vào Chuyến đi của tôi!');
       navigate('/my-trips');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error('Không thể lưu lịch trình lúc này');
+      if (e?.response?.status === 403) {
+        toast(e?.response?.data?.detail || 'Tài khoản Thường chỉ lưu tối đa 2 chuyến đi. Hãy nâng cấp VIP!', {
+          icon: '🔒',
+          duration: 4500,
+        });
+        setShowVipModal(true);
+      } else {
+        toast.error('Không thể lưu lịch trình lúc này');
+      }
     } finally {
       setSaving(false);
     }
@@ -468,6 +511,14 @@ export const PlanTrip: React.FC = () => {
               e.preventDefault();
               if (!editDest.trim()) {
                 toast.error('Vui lòng chọn hoặc nhập điểm đến!');
+                return;
+              }
+              if (editDays > 2 && !isVipOrAdmin) {
+                toast('👑 Tài khoản Thường chỉ hỗ trợ lập lịch trình tối đa 2 Ngày 1 Đêm! Hãy nâng cấp VIP Travel Pro để mở khóa lịch trình 3 - 7 ngày.', {
+                  icon: '🔒',
+                  duration: 4500,
+                });
+                setShowVipModal(true);
                 return;
               }
               const params = new URLSearchParams();
@@ -756,6 +807,14 @@ export const PlanTrip: React.FC = () => {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (editDays > 2 && !isVipOrAdmin) {
+                toast('👑 Tài khoản Thường chỉ hỗ trợ lập lịch trình tối đa 2 Ngày 1 Đêm! Hãy nâng cấp VIP Travel Pro để mở khóa lịch trình 3 - 7 ngày.', {
+                  icon: '🔒',
+                  duration: 4500,
+                });
+                setShowVipModal(true);
+                return;
+              }
               const nextParams = new URLSearchParams(searchParams);
               nextParams.delete('itineraryId');
               nextParams.delete('provinceId');
@@ -934,11 +993,21 @@ export const PlanTrip: React.FC = () => {
           <div className="flex items-center justify-between gap-1.5 pt-0.5 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={() => {
+                if (!isVipOrAdmin) {
+                  toast('👑 Tính năng In ấn & Xuất file PDF lịch trình dành riêng cho thành viên VIP Travel Pro!', {
+                    icon: '🔒',
+                    duration: 4000,
+                  });
+                  setShowVipModal(true);
+                  return;
+                }
+                window.print();
+              }}
               className="flex-1 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] transition flex items-center justify-center gap-1 cursor-pointer"
-              title="In hoặc xuất PDF"
+              title="In hoặc xuất PDF (Đặc quyền VIP)"
             >
-              <FaPrint className="text-[10px]" /> In / PDF
+              <FaPrint className="text-[10px]" /> In / PDF {!isVipOrAdmin && '👑'}
             </button>
             <button
               type="button"
@@ -1386,6 +1455,12 @@ export const PlanTrip: React.FC = () => {
           </div>
         </div>
       )}
+
+      <PaymentModal
+        isOpen={showVipModal}
+        onClose={() => setShowVipModal(false)}
+        onSuccess={() => setShowVipModal(false)}
+      />
     </div>
   );
 };
