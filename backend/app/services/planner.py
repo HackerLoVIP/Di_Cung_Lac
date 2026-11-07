@@ -621,33 +621,16 @@ def generate_smart_itinerary(
             order = 1
             prev_loc_coords: Optional[Tuple[float, float]] = None
 
-            # NGÀY 1: BẮT ĐẦU TỪ ĐIỂM SỐ 1 (NƠI HIỆN TẠI CỦA BẠN) -> ĐIỂM SỐ 2 (KHÁCH SẠN NHẬN PHÒNG / GỬI HÀNH LÝ)
+            # ĐIỂM SỐ 1: KHÁCH SẠN / RESORT LƯU TRÚ TẠI ĐIỂM ĐẾN (NHẬN PHÒNG / GỬI ĐỒ / XUẤT PHÁT MỖI SÁNG)
             if day_number == 1:
-                # Điểm 1: Vị trí hiện tại / Điểm xuất phát
                 day_items.append(ItineraryItemResponse(
                     id=order,
                     day_number=1,
-                    time_slot="06:30",
+                    time_slot="08:00",
                     order_in_day=order,
-                    note=f"Khởi hành xuất phát từ {start_location or 'vị trí hiện tại của bạn'} di chuyển đi {province.name}.",
+                    note=f"Đến {hotel_loc.name}, làm thủ tục gửi hành lý / nhận phòng khách sạn và nghỉ ngơi trước khi bắt đầu hành trình khám phá {province.name}.",
                     travel_distance_km=0.0,
                     travel_time_minutes=0,
-                    location=LocationResponse.from_orm(dep_loc)
-                ))
-                prev_loc_coords = (dep_loc.latitude, dep_loc.longitude)
-                order += 1
-
-                # Điểm 2: Di chuyển tới Khách sạn nhận phòng / gửi đồ
-                dist_to_hotel = calculate_distance(prev_loc_coords[0], prev_loc_coords[1], hotel_loc.latitude, hotel_loc.longitude)
-                time_to_hotel = estimate_travel_time(dist_to_hotel)
-                day_items.append(ItineraryItemResponse(
-                    id=order,
-                    day_number=1,
-                    time_slot="08:30",
-                    order_in_day=order,
-                    note=f"Đến {hotel_loc.name}, làm thủ tục gửi hành lý / nhận phòng khách sạn và nghỉ ngơi trước khi đi tham quan.",
-                    travel_distance_km=dist_to_hotel,
-                    travel_time_minutes=time_to_hotel,
                     location=LocationResponse.from_orm(hotel_loc)
                 ))
                 total_cost += hotel_loc.avg_cost_vnd
@@ -655,7 +638,6 @@ def generate_smart_itinerary(
                 used_loc_ids.add(hotel_loc.id)
                 order += 1
             else:
-                # NGÀY 2+: Điểm 1 xuất phát từ Khách sạn đang lưu trú
                 day_items.append(ItineraryItemResponse(
                     id=order,
                     day_number=day_number,
@@ -663,7 +645,7 @@ def generate_smart_itinerary(
                     order_in_day=order,
                     note=f"Khởi hành buổi sáng từ {hotel_loc.name} bắt đầu lịch trình Ngày {day_number}."
                     if day_number < num_days
-                    else f"Làm thủ tục trả phòng (check-out) tại {hotel_loc.name}, mang hành lý lên xe bắt đầu hành trình ngày cuối.",
+                    else f"Làm thủ tục trả phòng (check-out) tại {hotel_loc.name}, chuẩn bị hành trình khám phá ngày cuối.",
                     travel_distance_km=0.0,
                     travel_time_minutes=0,
                     location=LocationResponse.from_orm(hotel_loc)
@@ -760,8 +742,8 @@ def generate_smart_itinerary(
                     dist = calculate_distance(prev_loc_coords[0], prev_loc_coords[1], cur_coords[0], cur_coords[1])
                     time_m = estimate_travel_time(dist)
 
-                day1_schedule = ["06:30", "08:30", "09:30", "11:30", "14:00", "16:30", "19:00", "20:30"]
-                dayN_schedule = ["07:30", "08:30", "10:30", "12:30", "15:00", "17:30", "19:30", "21:00"]
+                day1_schedule = ["08:00", "09:15", "11:30", "14:00", "16:30", "19:00", "20:30"]
+                dayN_schedule = ["07:30", "08:45", "10:45", "12:30", "15:00", "17:30", "19:30"]
                 sched = day1_schedule if day_number == 1 else dayN_schedule
                 fallback_slot = sched[min(order - 1, len(sched) - 1)]
 
@@ -786,9 +768,9 @@ def generate_smart_itinerary(
                 order += 1
 
             # Dam bao moi ngay luon du cac diem tham quan / an uong neu AI tra ve thieu
-            default_slots = [("09:30", "tourist_spot"), ("12:00", "restaurant"), ("15:00", "tourist_spot"), ("17:00", "cafe"), ("19:00", "restaurant")]
-            while len(day_items) < (6 if day_number == 1 else 5):
-                slot_idx = min(len(day_items) - (2 if day_number == 1 else 1), len(default_slots) - 1)
+            default_slots = [("09:15", "tourist_spot"), ("12:00", "restaurant"), ("15:00", "tourist_spot"), ("17:00", "cafe"), ("19:00", "restaurant")]
+            while len(day_items) < 5:
+                slot_idx = min(len(day_items) - 1, len(default_slots) - 1)
                 t_slot, pref_cat = default_slots[max(0, slot_idx)]
                 extra_loc = pick_nearest_verified(prev_loc_coords, pref_cat, allow_far=(day_number == num_days))
                 if not extra_loc:
@@ -818,11 +800,7 @@ def generate_smart_itinerary(
             ))
 
         total_cost += num_days * 100000
-        trip_title = (
-            f"Hành trình {start_location} ➔ {province.name} ({num_days}N{num_nights}Đ)"
-            if start_location
-            else f"Lịch trình du lịch {province.name} {num_days}N{num_nights}Đ"
-        )
+        trip_title = f"Lịch trình khám phá {province.name} ({num_days}N{num_nights}Đ)"
         return ItineraryResponse(
             id=None,
             title=trip_title,

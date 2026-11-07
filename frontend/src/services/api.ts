@@ -91,35 +91,10 @@ export const itineraryAPI = {
   },
   save: async (itinerary: Itinerary): Promise<Itinerary> => {
     const res = await api.post('/itineraries', itinerary);
-    const saved = res.data;
-    if (saved?.id) {
-      try {
-        const raw = localStorage.getItem('saved_trip_ids');
-        const list: number[] = raw ? JSON.parse(raw) : [];
-        if (!list.includes(saved.id)) {
-          list.unshift(saved.id);
-          localStorage.setItem('saved_trip_ids', JSON.stringify(list));
-        }
-      } catch {
-        // ignore storage error
-      }
-    }
-    return saved;
+    return res.data;
   },
   getMyTrips: async () => {
-    let idsParam = '';
-    try {
-      const raw = localStorage.getItem('saved_trip_ids');
-      const list: number[] = raw ? JSON.parse(raw) : [];
-      if (list.length > 0) {
-        idsParam = list.join(',');
-      }
-    } catch {
-      // ignore
-    }
-    const res = await api.get('/itineraries/my', {
-      params: idsParam ? { ids: idsParam } : {},
-    });
+    const res = await api.get('/itineraries/my');
     return res.data;
   },
   getById: async (id: number): Promise<Itinerary> => {
@@ -128,26 +103,10 @@ export const itineraryAPI = {
   },
   delete: async (id: number) => {
     const res = await api.delete(`/itineraries/${id}`);
-    try {
-      const raw = localStorage.getItem('saved_trip_ids');
-      const list: number[] = raw ? JSON.parse(raw) : [];
-      const next = list.filter((x) => x !== id);
-      localStorage.setItem('saved_trip_ids', JSON.stringify(next));
-    } catch {
-      // ignore
-    }
     return res.data;
   },
   getCosts: async (id: number) => {
     const res = await api.get(`/itineraries/${id}/costs`);
-    return res.data;
-  },
-  detectLocation: async (): Promise<{ latitude: number; longitude: number; address: string; source: string }> => {
-    const res = await api.get('/itineraries/detect-location');
-    return res.data;
-  },
-  geocodeAddress: async (q: string): Promise<{ latitude: number; longitude: number; address: string; verified: boolean }> => {
-    const res = await api.get('/itineraries/geocode', { params: { q } });
     return res.data;
   },
 };

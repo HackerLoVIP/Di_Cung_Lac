@@ -44,9 +44,6 @@ export const Navbar: React.FC = () => {
               <FaSuitcase className="text-emerald-500" />
               Lập lịch trình
             </Link>
-            <Link to="/my-trips" className="text-slate-700 hover:text-amber-700 font-bold transition-colors flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl border border-amber-200/80">
-              <span>📂 Lịch trình đã lưu</span>
-            </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -107,7 +104,6 @@ export const Navbar: React.FC = () => {
           <Link to="/" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-700 font-medium">Trang chủ</Link>
           <Link to="/explore/1" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-700 font-medium">Khám phá địa điểm</Link>
           <Link to="/plan" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-700 font-medium">Lập lịch trình</Link>
-          <Link to="/my-trips" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-amber-800 font-bold">📂 Lịch trình đã lưu</Link>
           {user ? (
             <>
               <Link to="/my-trips" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-emerald-700 font-medium">Chuyến đi của tôi</Link>

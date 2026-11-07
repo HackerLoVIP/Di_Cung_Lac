@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { provinceAPI, itineraryAPI } from '../services/api';
+import { provinceAPI } from '../services/api';
 import { Province } from '../types';
 import {
   FaMapMarkerAlt,
@@ -29,11 +29,8 @@ export const Home: React.FC = () => {
   const navigate = useNavigate();
   const [provinces, setProvinces] = useState<Province[]>([]);
   
-  // Destination & Departure State
+  // Destination State
   const [destination, setDestination] = useState<string>('Tây Ninh');
-  const [startLocation, setStartLocation] = useState<string>('TP. Hồ Chí Minh');
-  const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [isLocating, setIsLocating] = useState<boolean>(false);
 
   // Date management: Departure & Return dates
   const formatDate = (date: Date) => {
@@ -91,8 +88,6 @@ export const Home: React.FC = () => {
     provinceAPI.getAll().then((data) => {
       setProvinces(data);
     }).catch(console.error);
-    // Tu dong dinh vi GPS cua thiet bi ngay khi mo trang chu
-    handleGetCurrentLocation(true);
   }, []);
 
   // Recalculate days and nights when dates change
@@ -129,94 +124,6 @@ export const Home: React.FC = () => {
       setStartDate(formatDate(s));
       setEndDate(formatDate(e));
     }
-  };
-
-  // GPS Geolocation with High-Accuracy Reverse Geocoding & Backend Network Fallback
-  const handleGetCurrentLocation = (silent = false) => {
-    setIsLocating(true);
-    if (!silent) toast('Đang dò tìm vị trí thực tế của bạn...', { icon: '📍' });
-
-    const fallbackToBackendLoc = async () => {
-      try {
-        const netLoc = await itineraryAPI.detectLocation();
-        setStartCoords({ lat: netLoc.latitude, lng: netLoc.longitude });
-        setStartLocation(netLoc.address);
-        if (!silent) toast.success(`Đã định vị vị trí của bạn: ${netLoc.address}!`);
-      } catch {
-        if (!silent) {
-          setStartCoords(null);
-          setStartLocation('TP. Hồ Chí Minh');
-        }
-      } finally {
-        setIsLocating(false);
-      }
-    };
-
-    if (!navigator.geolocation) {
-      fallbackToBackendLoc();
-      return;
-    }
-
-    const onGpsSuccess = async (pos: GeolocationPosition) => {
-      const { latitude, longitude } = pos.coords;
-      setStartCoords({ lat: latitude, lng: longitude });
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=17&accept-language=vi`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const addr = data.address;
-          const houseNum = addr?.house_number || '';
-          const road = [houseNum, addr?.road || ''].filter(Boolean).join(' ');
-          const suburb = addr?.suburb || addr?.quarter || addr?.neighbourhood || '';
-          const district = addr?.city_district || addr?.district || addr?.county || addr?.town || '';
-          const detectedCity = addr?.city || addr?.state || addr?.province || 'TP. Hồ Chí Minh';
-          const parts = [road, suburb, district, detectedCity].filter(Boolean);
-          const fullLabel = parts.length > 0 ? parts.join(', ') : detectedCity;
-          setStartLocation(fullLabel);
-          if (!silent) toast.success(`Đã định vị vị trí của bạn: ${fullLabel}!`);
-          setIsLocating(false);
-          return;
-        }
-      } catch {
-        // fallback
-      }
-
-      if (latitude >= 10.0 && latitude <= 11.5 && longitude >= 106.0 && longitude <= 107.5) {
-        setStartLocation('TP. Hồ Chí Minh');
-      } else if (latitude >= 20.5 && latitude <= 21.5) {
-        setStartLocation('Hà Nội');
-      } else if (latitude >= 15.5 && latitude <= 16.5) {
-        setStartLocation('Đà Nẵng');
-      } else {
-        setStartLocation('TP. Hồ Chí Minh');
-      }
-      if (!silent) toast.success('Đã cập nhật tọa độ xuất phát!');
-      setIsLocating(false);
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      onGpsSuccess,
-      () => {
-        navigator.geolocation.getCurrentPosition(
-          onGpsSuccess,
-          () => {
-            fallbackToBackendLoc();
-          },
-          { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 4000, maximumAge: 30000 }
-    );
-  };
-
-  // Swap start & destination
-  const handleSwap = () => {
-    const temp = destination;
-    setDestination(startLocation);
-    setStartLocation(temp);
-    setStartCoords(null);
   };
 
   const handleGenerate = (e: React.FormEvent) => {
@@ -266,17 +173,12 @@ export const Home: React.FC = () => {
 
     const params = new URLSearchParams({
       destination: dest,
-      start: startLocation,
       startDate: startDate,
       endDate: endDate,
       days: String(numDays),
       nights: String(numNights),
       prompt: fullPrompt
     });
-    if (startCoords) {
-      params.set('startLat', String(startCoords.lat));
-      params.set('startLng', String(startCoords.lng));
-    }
 
     navigate(`/plan?${params.toString()}`);
   };
@@ -300,69 +202,27 @@ export const Home: React.FC = () => {
           </h1>
 
           <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto font-normal">
-            Nhận diện vị trí hiện tại, chọn ngày đi ngày về cụ thể, tuỳ chọn phong cách & ngân sách. AI sẽ tự động phân tích và tạo lịch trình Google Maps tối ưu 100% dữ liệu thật.
+            Chọn tỉnh thành muốn đến, ngày đi ngày về cụ thể, tuỳ chọn phong cách & ngân sách. AI sẽ tự động phân tích và thiết kế lịch trình Google Maps tối ưu 100% dữ liệu thật.
           </p>
 
           {/* Traveloka / Booking Styled Horizontal Floating Search Bar */}
-          <div className="mt-8 max-w-5xl mx-auto space-y-3.5">
+          <div className="mt-8 max-w-4xl mx-auto space-y-3.5">
             <form
               onSubmit={handleGenerate}
               className="bg-white/95 backdrop-blur-md rounded-3xl lg:rounded-full p-2 lg:p-2.5 border-2 border-amber-200/90 shadow-[0_12px_40px_rgba(245,158,11,0.12)] hover:shadow-[0_16px_50px_rgba(245,158,11,0.18)] transition-all flex flex-col lg:flex-row items-stretch lg:items-center gap-1.5 lg:gap-2"
             >
-              {/* Segment 1: Điểm đi (Xuất phát) */}
-              <div className="flex-1 px-4 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left relative group">
-                <div className="flex items-center justify-between mb-0.5">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-amber-900/80 flex items-center gap-1">
-                    <FaCrosshairs className="text-blue-500 text-xs" />
-                    <span>Điểm đi</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleGetCurrentLocation(false)}
-                    disabled={isLocating}
-                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-full transition shadow-2xs"
-                    title="Tự động nhận diện GPS vị trí thực"
-                  >
-                    {isLocating ? <FaSpinner className="animate-spin text-xs" /> : <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />📍 GPS của tôi</span>}
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={startLocation}
-                  onChange={(e) => {
-                    setStartLocation(e.target.value);
-                    setStartCoords(null);
-                  }}
-                  placeholder="Nhập địa chỉ, quận/huyện hoặc TP..."
-                  className="w-full bg-transparent border-none text-slate-900 font-extrabold text-sm sm:text-base focus:outline-none placeholder:text-slate-400 placeholder:font-normal p-0"
-                />
-              </div>
-
-              {/* Swap Button (⇄) */}
-              <button
-                type="button"
-                onClick={handleSwap}
-                className="self-center w-8 h-8 rounded-full bg-slate-50 hover:bg-amber-200 text-slate-600 hover:text-amber-950 border border-slate-200/80 hover:border-amber-300 shadow-xs flex items-center justify-center cursor-pointer transition-all transform hover:rotate-180 shrink-0"
-                title="Đổi chiều xuất phát và điểm đến"
-              >
-                <FaExchangeAlt className="text-xs lg:rotate-0 rotate-90" />
-              </button>
-
-              <div className="hidden lg:block w-px h-10 bg-slate-200/80 self-center" />
-
-              {/* Segment 2: Điểm đến */}
-              <div className="flex-1 px-4 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left relative group">
+              {/* Segment 1: Điểm đến */}
+              <div className="flex-1 px-5 py-2 hover:bg-amber-50/60 rounded-2xl lg:rounded-full transition-all text-left relative group">
                 <label className="block text-[10px] font-black uppercase tracking-wider text-amber-900/80 flex items-center gap-1 mb-0.5">
                   <FaMapMarkerAlt className="text-red-500 text-xs" />
-                  <span>Điểm đến</span>
+                  <span>Điểm đến du lịch</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  placeholder="Bạn muốn đi đâu? (Tây Ninh, Đà Lạt...)"
+                  placeholder="Bạn muốn đi đâu? (Tây Ninh, Đà Lạt, Vũng Tàu, Phú Quốc...)"
                   className="w-full bg-transparent border-none text-slate-900 font-extrabold text-sm sm:text-base focus:outline-none placeholder:text-slate-400 placeholder:font-normal p-0"
                 />
               </div>
