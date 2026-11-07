@@ -691,7 +691,7 @@ def generate_smart_itinerary(
                 if loc_cat not in ["tourist_spot", "restaurant", "cafe", "beach", "shopping", "hotel"]:
                     loc_cat = "tourist_spot"
 
-                db_loc = _match_verified_db_location(loc_name, existing_locs)
+                db_loc = _match_verified_db_location(loc_name, [l for l in existing_locs if l.category != "hotel"])
                 is_final_day = (day_number == num_days)
 
                 if db_loc and db_loc.id in used_loc_ids:
@@ -760,11 +760,15 @@ def generate_smart_itinerary(
                     dist = calculate_distance(prev_loc_coords[0], prev_loc_coords[1], cur_coords[0], cur_coords[1])
                     time_m = estimate_travel_time(dist)
 
-                time_slot_str = itm.get("time_slot", f"0{8 + order}:00")
-                if day_number == 1 and order == 3 and time_slot_str < "09:00":
-                    time_slot_str = "09:30"
-                elif day_number > 1 and order == 2 and time_slot_str <= "08:00":
-                    time_slot_str = "08:30"
+                day1_schedule = ["06:30", "08:30", "09:30", "11:30", "14:00", "16:30", "19:00", "20:30"]
+                dayN_schedule = ["07:30", "08:30", "10:30", "12:30", "15:00", "17:30", "19:30", "21:00"]
+                sched = day1_schedule if day_number == 1 else dayN_schedule
+                fallback_slot = sched[min(order - 1, len(sched) - 1)]
+
+                time_slot_str = (itm.get("time_slot") or fallback_slot).strip()
+                prev_slot = day_items[-1].time_slot if day_items else "00:00"
+                if time_slot_str <= prev_slot:
+                    time_slot_str = fallback_slot if fallback_slot > prev_slot else prev_slot
 
                 note_text = itm.get("note") if _match_verified_db_location(loc_name, [db_loc]) else db_loc.description
                 day_items.append(ItineraryItemResponse(

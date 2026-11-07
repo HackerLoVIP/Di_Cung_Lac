@@ -131,7 +131,7 @@ export const Home: React.FC = () => {
     }
   };
 
-  // GPS Geolocation with High-Accuracy Reverse Geocoding
+  // GPS Geolocation with High-Accuracy Reverse Geocoding & Desktop Fallback
   const handleGetCurrentLocation = (silent = false) => {
     if (!navigator.geolocation) {
       if (!silent) toast.error('Trình duyệt của bạn không hỗ trợ định vị GPS');
@@ -140,53 +140,62 @@ export const Home: React.FC = () => {
     setIsLocating(true);
     if (!silent) toast('Đang dò tìm vị trí GPS chính xác của bạn...', { icon: '📍' });
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setStartCoords({ lat: latitude, lng: longitude });
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&accept-language=vi`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const addr = data.address;
-            const road = addr?.road || '';
-            const suburb = addr?.suburb || addr?.city_district || addr?.quarter || addr?.town || '';
-            const detectedCity = addr?.city || addr?.state || addr?.county || addr?.province || 'TP. Hồ Chí Minh';
-            const parts = [road, suburb, detectedCity].filter(Boolean);
-            const fullLabel = parts.length > 0 ? parts.join(', ') : detectedCity;
-            setStartLocation(fullLabel);
-            if (!silent) toast.success(`Đã định vị GPS vị trí của bạn: ${fullLabel}!`);
-            setIsLocating(false);
-            return;
-          }
-        } catch {
-          // fallback
+    const onGpsSuccess = async (pos: GeolocationPosition) => {
+      const { latitude, longitude } = pos.coords;
+      setStartCoords({ lat: latitude, lng: longitude });
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=17&accept-language=vi`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const addr = data.address;
+          const houseNum = addr?.house_number || '';
+          const road = [houseNum, addr?.road || ''].filter(Boolean).join(' ');
+          const suburb = addr?.suburb || addr?.quarter || addr?.neighbourhood || '';
+          const district = addr?.city_district || addr?.district || addr?.county || addr?.town || '';
+          const detectedCity = addr?.city || addr?.state || addr?.province || 'TP. Hồ Chí Minh';
+          const parts = [road, suburb, district, detectedCity].filter(Boolean);
+          const fullLabel = parts.length > 0 ? parts.join(', ') : detectedCity;
+          setStartLocation(fullLabel);
+          if (!silent) toast.success(`Đã định vị GPS vị trí của bạn: ${fullLabel}!`);
+          setIsLocating(false);
+          return;
         }
+      } catch {
+        // fallback
+      }
 
-        // Heuristic fallback
-        if (latitude >= 10.0 && latitude <= 11.5 && longitude >= 106.0 && longitude <= 107.5) {
-          setStartLocation('TP. Hồ Chí Minh');
-        } else if (latitude >= 20.5 && latitude <= 21.5) {
-          setStartLocation('Hà Nội');
-        } else if (latitude >= 15.5 && latitude <= 16.5) {
-          setStartLocation('Đà Nẵng');
-        } else {
-          setStartLocation('TP. Hồ Chí Minh');
-        }
-        if (!silent) toast.success('Đã cập nhật tọa độ GPS xuất phát!');
-        setIsLocating(false);
-      },
+      if (latitude >= 10.0 && latitude <= 11.5 && longitude >= 106.0 && longitude <= 107.5) {
+        setStartLocation('TP. Hồ Chí Minh');
+      } else if (latitude >= 20.5 && latitude <= 21.5) {
+        setStartLocation('Hà Nội');
+      } else if (latitude >= 15.5 && latitude <= 16.5) {
+        setStartLocation('Đà Nẵng');
+      } else {
+        setStartLocation('TP. Hồ Chí Minh');
+      }
+      if (!silent) toast.success('Đã cập nhật tọa độ GPS xuất phát!');
+      setIsLocating(false);
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      onGpsSuccess,
       () => {
-        setIsLocating(false);
-        if (!silent) {
-          setStartCoords(null);
-          setStartLocation('TP. Hồ Chí Minh');
-          toast.error('Không thể truy cập GPS, đặt vị trí mặc định TP. Hồ Chí Minh');
-        }
+        navigator.geolocation.getCurrentPosition(
+          onGpsSuccess,
+          () => {
+            setIsLocating(false);
+            if (!silent) {
+              setStartCoords(null);
+              setStartLocation('TP. Hồ Chí Minh');
+              toast.error('Không thể truy cập GPS tự động. Bạn có thể nhập trực tiếp địa chỉ Điểm đi!');
+            }
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 }
     );
   };
 

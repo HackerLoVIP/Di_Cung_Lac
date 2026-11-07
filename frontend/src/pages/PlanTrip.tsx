@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { itineraryAPI, expenseAPI } from '../services/api';
@@ -23,18 +23,32 @@ import {
   FaExchangeAlt,
   FaChevronLeft,
   FaChevronRight,
-  FaGasPump,
   FaUtensils,
   FaCoffee,
   FaHotel,
   FaCamera,
-  FaDirections,
   FaPrint,
-  FaRoad,
   FaListUl,
-  FaMapMarkedAlt
+  FaMapMarkedAlt,
+  FaCrosshairs,
+  FaMagic,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+
+// Tính khoảng cách đường bộ xấp xỉ giữa 2 tọa độ GPS (km)
+function calcRoadDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371.0;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 1.25 * 10) / 10;
+}
 
 export const PlanTrip: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -48,10 +62,13 @@ export const PlanTrip: React.FC = () => {
   const startLng = searchParams.get('startLng') ? Number(searchParams.get('startLng')) : undefined;
   const provinceId = searchParams.get('provinceId') ? Number(searchParams.get('provinceId')) : undefined;
   const numDays = Number(searchParams.get('days')) || 2;
-  const numNights = Number(searchParams.get('nights')) || 1;
+  const numNights = searchParams.get('nights') !== null ? Number(searchParams.get('nights')) : Math.max(0, numDays - 1);
   const prompt = searchParams.get('prompt') || '';
   const startDateStr = searchParams.get('startDate') || '';
   const endDateStr = searchParams.get('endDate') || '';
+
+  // Kiểm tra xem người dùng đã chọn điểm đến cụ thể hay bấm trực tiếp vào menu /plan
+  const hasTripTarget = Boolean(savedTripId || destination.trim() || provinceId);
 
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [weather, setWeather] = useState<{
@@ -66,7 +83,7 @@ export const PlanTrip: React.FC = () => {
     location_name?: string;
     is_live?: boolean;
   } | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(hasTripTarget);
   const [saving, setSaving] = useState<boolean>(false);
   const [showCostModal, setShowCostModal] = useState<boolean>(false);
   const [selectedDay, setSelectedDay] = useState<number>(1);
@@ -76,8 +93,15 @@ export const PlanTrip: React.FC = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<'map' | 'timeline' | 'budget'>('timeline');
   const [isSwappedOrigin, setIsSwappedOrigin] = useState<boolean>(false);
+
   const [editStart, setEditStart] = useState<string>(startLocation || 'TP. Hồ Chí Minh');
-  const [editDest, setEditDest] = useState<string>(destination || '');
+  const [editStartCoords, setEditStartCoords] = useState<{ lat: number; lng: number } | null>(
+    startLat !== undefined && startLng !== undefined ? { lat: startLat, lng: startLng } : null
+  );
+  const [editDest, setEditDest] = useState<string>(destination || 'Đà Lạt');
+  const [editDays, setEditDays] = useState<number>(numDays || 2);
+  const [editPrompt, setEditPrompt] = useState<string>(prompt || '');
+  const [locatingOrigin, setLocatingOrigin] = useState<boolean>(false);
 
   // Expense Tracker State
   interface ExpenseItem {
@@ -96,6 +120,121 @@ export const PlanTrip: React.FC = () => {
   const [editingActualId, setEditingActualId] = useState<number | string | null>(null);
   const [tempActualVal, setTempActualVal] = useState('');
 
+  // Hàm lấy địa chỉ tiếng Việt từ tọa độ GPS
+  const reverseGeocodeAddress = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=17&accept-language=vi`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const addr = data.address;
+        const houseNumber = addr?.house_number || '';
+        const road = addr?.road || '';
+        const roadPart = [houseNumber, road].filter(Boolean).join(' ');
+        const suburb = addr?.suburb || addr?.quarter || addr?.neighbourhood || addr?.village || '';
+        const district = addr?.city_district || addr?.district || addr?.county || addr?.town || '';
+        const city = addr?.city || addr?.state || addr?.province || 'TP. Hồ Chí Minh';
+        const parts = [roadPart, suburb, district, city].filter(Boolean);
+        if (parts.length > 0) return parts.join(', ');
+      }
+    } catch {
+      // ignore
+    }
+    return `Tọa độ GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+  };
+
+  // Đồng bộ Điểm số 1 (Vị trí xuất phát) trên cả Timeline bên trái và Bản đồ bên phải khi định vị GPS hoặc kéo thả ghim
+  const handleOriginChange = useCallback((lat: number, lng: number, addressLabel: string) => {
+    setEditStart(addressLabel);
+    setEditStartCoords({ lat, lng });
+
+    setItinerary((prev) => {
+      if (!prev) return prev;
+      const updatedDays = prev.days.map((d) => {
+        if (d.day_number !== 1 || d.items.length === 0) return d;
+        const newItems = [...d.items];
+        const firstItem = newItems[0];
+        newItems[0] = {
+          ...firstItem,
+          note: `Khởi hành xuất phát từ ${addressLabel} di chuyển đi ${prev.province?.name || ''}.`,
+          location: {
+            ...firstItem.location,
+            name: `Điểm xuất phát: ${addressLabel}`,
+            address: `Tọa độ GPS thực tế (${lat.toFixed(5)}, ${lng.toFixed(5)}) - ${addressLabel}`,
+            latitude: lat,
+            longitude: lng,
+          },
+        };
+
+        // Tính lại khoảng cách từ Điểm số 1 mới tới Điểm số 2 (Khách sạn)
+        if (newItems.length > 1) {
+          const secondItem = newItems[1];
+          const distKm = calcRoadDistanceKm(
+            lat,
+            lng,
+            secondItem.location.latitude,
+            secondItem.location.longitude
+          );
+          const timeMin = Math.max(5, Math.round((distKm / 35.0) * 60));
+          newItems[1] = {
+            ...secondItem,
+            travel_distance_km: distKm,
+            travel_time_minutes: timeMin,
+          };
+        }
+
+        return { ...d, items: newItems };
+      });
+      return { ...prev, days: updatedDays };
+    });
+  }, []);
+
+  // Bấm nút lấy GPS trực tiếp tại ô Điểm số 1
+  const handleDetectMyGPS = (silent = false) => {
+    if (!navigator.geolocation) {
+      if (!silent) toast.error('Trình duyệt không hỗ trợ định vị GPS');
+      return;
+    }
+    setLocatingOrigin(true);
+    if (!silent) toast('Đang xác định tọa độ GPS vị trí hiện tại của bạn...', { icon: '📍' });
+
+    const onSuccess = async (pos: GeolocationPosition) => {
+      const { latitude, longitude } = pos.coords;
+      const label = await reverseGeocodeAddress(latitude, longitude);
+      setLocatingOrigin(false);
+      handleOriginChange(latitude, longitude, label);
+      if (!silent) {
+        toast.success(`Đã định vị Điểm số 1: ${label}`);
+      }
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      onSuccess,
+      () => {
+        navigator.geolocation.getCurrentPosition(
+          onSuccess,
+          () => {
+            setLocatingOrigin(false);
+            if (!silent) {
+              toast.error('Không thể lấy GPS tự động. Bạn có thể gõ trực tiếp số nhà/đường/quận vào ô Điểm số 1!');
+            }
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 }
+    );
+  };
+
+  // Tự động lấy GPS cho màn hình thiết lập nhanh khi vào /plan chưa có tham số
+  useEffect(() => {
+    if (!hasTripTarget && !startLat && !startLng) {
+      handleDetectMyGPS(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasTripTarget]);
+
   const initDefaultExpenses = (itin: Itinerary) => {
     const list: ExpenseItem[] = [];
     itin.days?.forEach((day) => {
@@ -113,7 +252,7 @@ export const PlanTrip: React.FC = () => {
               title: `${item.location.name} (Ngày ${day.day_number})`,
               category: cat,
               planned_cost: cost,
-              actual_cost: 0
+              actual_cost: 0,
             });
           }
         }
@@ -126,7 +265,7 @@ export const PlanTrip: React.FC = () => {
       title: `Xăng xe & di chuyển (${numDaysVal} ngày)`,
       category: 'transport',
       planned_cost: numDaysVal * 100000,
-      actual_cost: 0
+      actual_cost: 0,
     });
 
     setExpenses(list);
@@ -151,7 +290,7 @@ export const PlanTrip: React.FC = () => {
         });
         setExpenses((prev) => [...prev, created]);
         toast.success('Đã thêm khoản chi mới');
-      } catch (err) {
+      } catch {
         toast.error('Lỗi khi lưu khoản chi');
       }
     } else {
@@ -227,19 +366,35 @@ export const PlanTrip: React.FC = () => {
     }
   };
 
-
   useEffect(() => {
+    if (!hasTripTarget) {
+      setLoading(false);
+      return;
+    }
+
     let isCancelled = false;
     setLoading(true);
+    setActiveLocationId(null);
+
     if (savedTripId) {
-      // Tai lich trinh da luu
-      itineraryAPI.getById(Number(savedTripId))
+      itineraryAPI
+        .getById(Number(savedTripId))
         .then((itinData) => {
           if (isCancelled) return;
           setItinerary(itinData);
           setEditDest(itinData.province?.name || '');
+          setEditDays(itinData.num_days || 2);
+          const firstDayItem = itinData.days?.[0]?.items?.[0];
+          if (firstDayItem?.location?.name) {
+            const cleanStart = firstDayItem.location.name
+              .replace(/^Điểm xuất phát:\s*/i, '')
+              .replace(/\s*\(Vị trí.*\)$/i, '')
+              .trim();
+            if (cleanStart) setEditStart(cleanStart);
+          }
           const pId = itinData.province?.id || 1;
-          return axios.get(`/api/ai/weather?province_id=${pId}`)
+          return axios
+            .get(`/api/ai/weather?province_id=${pId}`)
             .then((r) => !isCancelled && setWeather(r.data))
             .catch(() => null);
         })
@@ -253,23 +408,29 @@ export const PlanTrip: React.FC = () => {
     } else {
       const runGenerate = (finalStartLoc?: string, finalLat?: number, finalLng?: number) => {
         if (isCancelled) return;
-        itineraryAPI.generate({
-          destination: destination || undefined,
-          start_location: finalStartLoc || startLocation || undefined,
-          start_lat: finalLat ?? startLat,
-          start_lng: finalLng ?? startLng,
-          province_id: provinceId,
-          num_days: numDays,
-          num_nights: numNights,
-          prompt: prompt,
-        })
+        itineraryAPI
+          .generate({
+            destination: destination || undefined,
+            start_location: finalStartLoc || startLocation || undefined,
+            start_lat: finalLat ?? startLat,
+            start_lng: finalLng ?? startLng,
+            province_id: provinceId,
+            num_days: numDays,
+            num_nights: numNights,
+            prompt: prompt,
+          })
           .then((itinData) => {
             if (isCancelled) return;
             setItinerary(itinData);
             setEditDest(itinData.province?.name || destination || '');
+            setEditDays(itinData.num_days || numDays);
             if (finalStartLoc) setEditStart(finalStartLoc);
+            if (finalLat !== undefined && finalLng !== undefined) {
+              setEditStartCoords({ lat: finalLat, lng: finalLng });
+            }
             const pId = itinData.province?.id || 1;
-            return axios.get(`/api/ai/weather?province_id=${pId}`)
+            return axios
+              .get(`/api/ai/weather?province_id=${pId}`)
               .then((r) => !isCancelled && setWeather(r.data))
               .catch(() => null);
           })
@@ -282,35 +443,26 @@ export const PlanTrip: React.FC = () => {
           });
       };
 
-      // Neu chua co toa do GPS xuat phat va nguoi dung chua nhap dia chi cu the -> tu dong lay GPS thiet bi
       const isDefaultStart = !startLocation || startLocation.trim().toLowerCase() === 'tp. hồ chí minh';
       if (startLat === undefined && startLng === undefined && isDefaultStart && navigator.geolocation) {
+        const onGpsOk = async (pos: GeolocationPosition) => {
+          const { latitude, longitude } = pos.coords;
+          const detectedLabel = await reverseGeocodeAddress(latitude, longitude);
+          runGenerate(detectedLabel, latitude, longitude);
+        };
+
         navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            const { latitude, longitude } = pos.coords;
-            let detectedLabel = startLocation || 'TP. Hồ Chí Minh';
-            try {
-              const res = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16&accept-language=vi`
-              );
-              if (res.ok) {
-                const data = await res.json();
-                const addr = data.address;
-                const road = addr?.road || '';
-                const suburb = addr?.suburb || addr?.city_district || addr?.quarter || addr?.town || '';
-                const city = addr?.city || addr?.state || addr?.province || 'TP. Hồ Chí Minh';
-                const parts = [road, suburb, city].filter(Boolean);
-                if (parts.length > 0) detectedLabel = parts.join(', ');
-              }
-            } catch {
-              // ignore
-            }
-            runGenerate(detectedLabel, latitude, longitude);
-          },
+          onGpsOk,
           () => {
-            runGenerate(startLocation || undefined, startLat, startLng);
+            navigator.geolocation.getCurrentPosition(
+              onGpsOk,
+              () => {
+                runGenerate(startLocation || undefined, startLat, startLng);
+              },
+              { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+            );
           },
-          { enableHighAccuracy: true, timeout: 3500, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 4500, maximumAge: 30000 }
         );
       } else {
         runGenerate(startLocation || undefined, startLat, startLng);
@@ -319,12 +471,13 @@ export const PlanTrip: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [savedTripId, destination, startLocation, startLat, startLng, provinceId, numDays, numNights, prompt]);
+  }, [hasTripTarget, savedTripId, destination, startLocation, startLat, startLng, provinceId, numDays, numNights, prompt]);
 
   useEffect(() => {
     if (!itinerary) return;
     if (itinerary.id) {
-      expenseAPI.getByItineraryId(itinerary.id)
+      expenseAPI
+        .getByItineraryId(itinerary.id)
         .then((data) => {
           if (data && data.length > 0) {
             setExpenses(data);
@@ -338,6 +491,23 @@ export const PlanTrip: React.FC = () => {
     }
   }, [itinerary]);
 
+  // Dùng useMemo cho danh sách items truyền vào RouteMap để KHÔNG tạo mảng mới khi click chọn vị trí
+  const filteredMapItems = useMemo(() => {
+    if (!itinerary) return [];
+    const rawItems =
+      selectedDay === 0
+        ? itinerary.days.flatMap((d) => d.items)
+        : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || [];
+
+    return rawItems.filter((it) => {
+      if (!selectedCategoryFilter) return true;
+      const cat = it.location?.category || 'tourist_spot';
+      if (selectedCategoryFilter === 'tourist_spot') {
+        return cat === 'tourist_spot' || cat === 'beach' || cat === 'shopping';
+      }
+      return cat === selectedCategoryFilter;
+    });
+  }, [itinerary, selectedDay, selectedCategoryFilter]);
 
   const handleSaveTrip = async () => {
     if (!user) {
@@ -350,7 +520,6 @@ export const PlanTrip: React.FC = () => {
     setSaving(true);
     try {
       const savedItin = await itineraryAPI.save(itinerary);
-      // Đồng bộ toàn bộ khoản chi trong Sổ chi tiêu vào DB cho lịch trình vừa lưu
       if (savedItin?.id && expenses.length > 0) {
         const unsavedExpenses = expenses.filter((e) => !e.id);
         await Promise.all(
@@ -382,33 +551,236 @@ export const PlanTrip: React.FC = () => {
     toast.success('Đã sao chép liên kết chia sẻ!');
   };
 
+  // Màn hình Khởi tạo nhanh Lộ trình khi người dùng bấm trực tiếp vào menu "Lập lịch trình" (/plan) trên Navbar
+  if (!hasTripTarget && !loading) {
+    const popularDestinations = [
+      { name: 'Đà Lạt', desc: 'Săn mây, thông reo & cà phê đồi', icon: '🌲' },
+      { name: 'Vũng Tàu', desc: 'Biển xanh, hải sản & đường ven biển', icon: '🏖️' },
+      { name: 'Tây Ninh', desc: 'Núi Bà Đen, Tòa Thánh & bò tơ', icon: '⛰️' },
+      { name: 'Phú Quốc', desc: 'Đảo Ngọc, lặn ngắm san hô & hoàng hôn', icon: '🏝️' },
+      { name: 'Pleiku', desc: 'Biển Hồ Tơ Nưng, hàng thông trăm tuổi', icon: '☕' },
+      { name: 'Nha Trang', desc: 'Vịnh biển đẹp, đảo Hòn Mun & hải sản', icon: '🐬' },
+      { name: 'Cần Thơ', desc: 'Chợ nổi Cái Răng, bến Ninh Kiều', icon: '⛵' },
+      { name: 'Hà Giang', desc: 'Đèo Mã Pí Lèng, sông Nho Quế', icon: '🏍️' },
+    ];
+
+    const quickOrigins = [
+      'TP. Hồ Chí Minh',
+      'Quận 1, TP. Hồ Chí Minh',
+      'TP. Thủ Đức, TP. Hồ Chí Minh',
+      'Quận Gò Vấp, TP. Hồ Chí Minh',
+      'Quận 7, TP. Hồ Chí Minh',
+      'Bình Dương',
+      'Biên Hòa, Đồng Nai',
+      'Hà Nội',
+      'Đà Nẵng',
+      'Cần Thơ',
+    ];
+
+    return (
+      <div className="h-[calc(100vh-64px)] overflow-y-auto bg-gradient-to-b from-amber-50/60 via-[#faf9f5] to-white py-8 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto bg-white rounded-3xl border-2 border-amber-200/90 shadow-xl p-6 sm:p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <span className="inline-flex items-center gap-1.5 pastel-yellow-badge px-3.5 py-1 rounded-full text-xs font-black">
+              ✨ Thiết lập lộ trình AI & Định vị thực tế
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
+              Bạn muốn bắt đầu chuyến đi từ đâu và đi đâu?
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Điểm số 1 sẽ là vị trí hiện tại của bạn, Điểm số 2 là khách sạn nhận phòng/gửi đồ, tiếp theo là các điểm tham quan & ăn uống chuẩn tọa độ Google Maps.
+            </p>
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!editDest.trim()) {
+                toast.error('Vui lòng chọn hoặc nhập điểm đến!');
+                return;
+              }
+              const params = new URLSearchParams();
+              params.set('destination', editDest.trim());
+              params.set('start', editStart.trim() || 'TP. Hồ Chí Minh');
+              params.set('days', String(editDays));
+              params.set('nights', String(Math.max(0, editDays - 1)));
+              if (editPrompt.trim()) params.set('prompt', editPrompt.trim());
+              if (editStartCoords) {
+                params.set('startLat', String(editStartCoords.lat));
+                params.set('startLng', String(editStartCoords.lng));
+              }
+              navigate(`/plan?${params.toString()}`);
+            }}
+            className="space-y-5"
+          >
+            {/* Điểm số 1: Vị trí hiện tại của bạn */}
+            <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-black text-blue-900 uppercase flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px]">1</span>
+                  <span>Điểm xuất phát (Vị trí hiện tại của bạn)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleDetectMyGPS(false)}
+                  disabled={locatingOrigin}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+                >
+                  <FaCrosshairs className={locatingOrigin ? 'animate-spin' : ''} />
+                  <span>{locatingOrigin ? 'Đang dò GPS...' : 'Lấy GPS vị trí của tôi'}</span>
+                </button>
+              </div>
+
+              <input
+                type="text"
+                required
+                value={editStart}
+                onChange={(e) => {
+                  setEditStart(e.target.value);
+                  setEditStartCoords(null);
+                }}
+                placeholder="Nhập số nhà, tên đường, phường/xã, quận/huyện, thành phố..."
+                className="w-full bg-white border border-blue-200 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:outline-none shadow-2xs"
+              />
+
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                <span className="text-[11px] text-slate-500 font-semibold">Chọn nhanh khu vực:</span>
+                {quickOrigins.map((org) => (
+                  <button
+                    key={org}
+                    type="button"
+                    onClick={() => {
+                      setEditStart(org);
+                      setEditStartCoords(null);
+                    }}
+                    className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+                      editStart === org
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white hover:bg-blue-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {org}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Điểm đến */}
+            <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 space-y-3">
+              <label className="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
+                <FaMapMarkerAlt className="text-red-600 text-sm" />
+                <span>Điểm đến du lịch (Tỉnh / Thành phố)</span>
+              </label>
+
+              <input
+                type="text"
+                required
+                value={editDest}
+                onChange={(e) => setEditDest(e.target.value)}
+                placeholder="Nhập tên tỉnh/thành phố bạn muốn đến (Đà Lạt, Tây Ninh, Vũng Tàu, Phú Quốc...)"
+                className="w-full bg-white border border-amber-300 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:outline-none shadow-2xs"
+              />
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {popularDestinations.map((d) => (
+                  <button
+                    key={d.name}
+                    type="button"
+                    onClick={() => setEditDest(d.name)}
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                      editDest.toLowerCase() === d.name.toLowerCase()
+                        ? 'bg-amber-300 border-amber-500 text-amber-950 shadow-xs ring-2 ring-amber-300'
+                        : 'bg-white hover:bg-amber-50 border-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <div className="font-black text-xs flex items-center gap-1.5">
+                      <span>{d.icon}</span>
+                      <span>{d.name}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">{d.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Thời lượng & Yêu cầu AI */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">📅 Số ngày đi:</label>
+                <select
+                  value={editDays}
+                  onChange={(e) => setEditDays(Number(e.target.value))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-amber-400 cursor-pointer"
+                >
+                  <option value={1}>1 Ngày (Đi về trong ngày)</option>
+                  <option value={2}>2 Ngày 1 Đêm (Cuối tuần)</option>
+                  <option value={3}>3 Ngày 2 Đêm (Khám phá sâu)</option>
+                  <option value={4}>4 Ngày 3 Đêm (Nghỉ dưỡng dài)</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2 space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">💡 Sở thích & Yêu cầu cho Gemini AI:</label>
+                <input
+                  type="text"
+                  value={editPrompt}
+                  onChange={(e) => setEditPrompt(e.target.value)}
+                  placeholder="VD: Thích ăn đặc sản địa phương, quán cà phê săn mây, nghỉ khách sạn trung tâm..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full pastel-yellow-btn py-3.5 rounded-2xl font-black text-sm sm:text-base shadow-lg flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] transition"
+            >
+              <FaMagic />
+              <span>Tạo Lịch Trình AI & Mở Bản Đồ Dẫn Đường</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
         <FaSpinner className="text-4xl text-emerald-500 animate-spin" />
-        <h2 className="text-lg font-bold text-slate-700">AI đang phân tích và thiết kế lịch trình {destination ? `tại ${destination}` : ''}...</h2>
-        <p className="text-sm text-slate-400">Đang định vị toạ độ thực tế, tính toán quãng đường và ngân sách ẩm thực</p>
+        <h2 className="text-lg font-bold text-slate-700">
+          Gemini AI đang phân tích và thiết kế lịch trình {destination ? `tại ${destination}` : ''}...
+        </h2>
+        <p className="text-sm text-slate-400">
+          Đang xác thực tọa độ Google Maps thực tế từ Điểm số 1 ({editStart}) tới Khách sạn & các điểm tham quan
+        </p>
       </div>
     );
   }
 
   if (!itinerary) {
     return (
-      <div className="max-w-4xl mx-auto py-16 px-4 text-center">
+      <div className="max-w-4xl mx-auto py-16 px-4 text-center space-y-4">
         <h2 className="text-xl font-bold text-slate-700">Không tìm thấy dữ liệu lịch trình</h2>
+        <button
+          onClick={() => navigate('/plan')}
+          className="pastel-yellow-btn px-5 py-2.5 rounded-xl font-black text-xs cursor-pointer"
+        >
+          Thiết lập lại lịch trình
+        </button>
       </div>
     );
   }
 
   return (
     <div className="h-[calc(100vh-64px)] w-full flex flex-col lg:flex-row overflow-hidden relative bg-slate-100">
-      {/* Google Maps Styled Left Panel (Navigation Search & Turn-by-Turn Timeline - Unified Single Scroll) */}
+      {/* Google Maps Styled Left Panel (Navigation Search & Turn-by-Turn Timeline) */}
       <div
         className={`w-full lg:w-[390px] xl:w-[415px] 2xl:w-[435px] h-full overflow-y-auto bg-white border-r border-slate-200 shadow-xl z-20 transition-all duration-300 relative shrink-0 scrollbar-thin ${
           isSidebarCollapsed ? 'lg:-ml-[390px] xl:-ml-[415px] 2xl:-ml-[435px]' : ''
         } ${mobileTab === 'map' ? 'hidden lg:block' : 'block'}`}
       >
-        {/* Sidebar Toggle Chevron Pill for Desktop (Google Maps style) */}
+        {/* Sidebar Toggle Chevron Pill for Desktop */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           className="hidden lg:flex absolute top-16 -right-4 z-30 bg-white hover:bg-amber-100 text-slate-700 hover:text-amber-950 border border-slate-200 shadow-md rounded-r-xl w-4 h-14 items-center justify-center cursor-pointer transition text-xs"
@@ -471,16 +843,24 @@ export const PlanTrip: React.FC = () => {
             </div>
           </div>
 
-          {/* Direction Inputs Card (Interactive Origin & Destination with connecting line) */}
+          {/* Direction Inputs Card (Interactive Origin & Destination with GPS Button) */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
               const nextParams = new URLSearchParams(searchParams);
               nextParams.delete('itineraryId');
-              nextParams.delete('startLat');
-              nextParams.delete('startLng');
+              nextParams.delete('provinceId');
               if (editStart.trim()) nextParams.set('start', editStart.trim());
               if (editDest.trim()) nextParams.set('destination', editDest.trim());
+              nextParams.set('days', String(editDays));
+              nextParams.set('nights', String(Math.max(0, editDays - 1)));
+              if (editStartCoords) {
+                nextParams.set('startLat', String(editStartCoords.lat));
+                nextParams.set('startLng', String(editStartCoords.lng));
+              } else {
+                nextParams.delete('startLat');
+                nextParams.delete('startLng');
+              }
               navigate(`/plan?${nextParams.toString()}`);
             }}
             className="relative bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 space-y-1.5"
@@ -488,17 +868,34 @@ export const PlanTrip: React.FC = () => {
             {/* Connecting Vertical Dotted Line */}
             <div className="absolute left-[21px] top-[22px] bottom-[52px] w-0.5 border-l-2 border-dashed border-slate-300 pointer-events-none" />
 
-            {/* Origin Row */}
+            {/* Origin Row (Điểm số 1) */}
             <div className="flex items-center gap-2 pr-8">
               <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-600 flex items-center justify-center shrink-0 z-10">
                 <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
               </div>
               <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs focus-within:border-blue-500">
-                <span className="text-[9px] text-blue-600 font-bold block uppercase leading-none mb-0.5">Điểm số 1 (Vị trí xuất phát của bạn)</span>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[9px] text-blue-600 font-bold uppercase leading-none">
+                    Điểm số 1 (Vị trí xuất phát của bạn)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDetectMyGPS(false)}
+                    disabled={locatingOrigin}
+                    className="text-[9px] font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-1 cursor-pointer transition"
+                    title="Định vị GPS thực tế ngay lập tức"
+                  >
+                    <FaCrosshairs className={locatingOrigin ? 'animate-spin' : ''} />
+                    <span>GPS của tôi</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={editStart}
-                  onChange={(e) => setEditStart(e.target.value)}
+                  onChange={(e) => {
+                    setEditStart(e.target.value);
+                    setEditStartCoords(null);
+                  }}
                   placeholder="Nhập số nhà, đường, quận/huyện..."
                   className="w-full font-bold text-slate-900 bg-transparent focus:outline-none text-xs"
                 />
@@ -510,27 +907,42 @@ export const PlanTrip: React.FC = () => {
               <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-600 flex items-center justify-center shrink-0 z-10">
                 <FaMapMarkerAlt className="text-red-600 text-xs" />
               </div>
-              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs focus-within:border-red-500">
-                <span className="text-[9px] text-red-600 font-bold block uppercase leading-none mb-0.5">Điểm đến</span>
-                <input
-                  type="text"
-                  value={editDest}
-                  onChange={(e) => setEditDest(e.target.value)}
-                  placeholder="Nhập tỉnh/thành phố đến..."
-                  className="w-full font-bold text-slate-900 bg-transparent focus:outline-none text-xs"
-                />
+              <div className="flex-1 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs focus-within:border-red-500 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <span className="text-[9px] text-red-600 font-bold block uppercase leading-none mb-0.5">
+                    Điểm đến
+                  </span>
+                  <input
+                    type="text"
+                    value={editDest}
+                    onChange={(e) => setEditDest(e.target.value)}
+                    placeholder="Nhập tỉnh/thành phố đến..."
+                    className="w-full font-bold text-slate-900 bg-transparent focus:outline-none text-xs"
+                  />
+                </div>
+                <select
+                  value={editDays}
+                  onChange={(e) => setEditDays(Number(e.target.value))}
+                  className="bg-amber-50 border border-amber-200 text-amber-950 font-black text-[10px] rounded-lg px-1.5 py-1 focus:outline-none cursor-pointer shrink-0"
+                  title="Số ngày"
+                >
+                  <option value={1}>1N</option>
+                  <option value={2}>2N1Đ</option>
+                  <option value={3}>3N2Đ</option>
+                  <option value={4}>4N3Đ</option>
+                </select>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-1">
               <span className="text-[10px] text-slate-400 italic mr-auto pl-7">
-                💡 Có thể kéo thả Ghim số 1 trên bản đồ
+                💡 Bấm ghim 1, 2, 3 hoặc kéo Ghim số 1 trên bản đồ
               </span>
               <button
                 type="submit"
                 className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-xs cursor-pointer transition"
               >
-                Định vị & Cập nhật
+                Tạo & Cập nhật
               </button>
             </div>
 
@@ -541,9 +953,10 @@ export const PlanTrip: React.FC = () => {
                 const tmp = editStart;
                 setEditStart(editDest);
                 setEditDest(tmp);
+                setEditStartCoords(null);
                 setIsSwappedOrigin(!isSwappedOrigin);
               }}
-              className="absolute right-2.5 top-[38px] -translate-y-1/2 w-7 h-7 rounded-full bg-white hover:bg-amber-50 text-slate-500 hover:text-amber-800 border border-slate-200 shadow-xs flex items-center justify-center cursor-pointer transition"
+              className="absolute right-2.5 top-[42px] -translate-y-1/2 w-7 h-7 rounded-full bg-white hover:bg-amber-50 text-slate-500 hover:text-amber-800 border border-slate-200 shadow-xs flex items-center justify-center cursor-pointer transition"
               title="Đổi chiều xuất phát và điểm đến"
             >
               <FaExchangeAlt className="rotate-90 text-[10px]" />
@@ -609,7 +1022,7 @@ export const PlanTrip: React.FC = () => {
             </button>
           </div>
 
-          {/* Days Switcher Tabs (Alternative Routes style) */}
+          {/* Days Switcher Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
             {itinerary.days.map((day) => {
               let dayDateLabel = '';
@@ -637,7 +1050,10 @@ export const PlanTrip: React.FC = () => {
                       : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border border-slate-200/80'
                   }`}
                 >
-                  <span>Ngày {day.day_number}{dayDateLabel ? ` (${dayDateLabel})` : ''}</span>
+                  <span>
+                    Ngày {day.day_number}
+                    {dayDateLabel ? ` (${dayDateLabel})` : ''}
+                  </span>
                   <span className="text-[10px] opacity-75">({day.items.length})</span>
                 </button>
               );
@@ -665,14 +1081,15 @@ export const PlanTrip: React.FC = () => {
                 <span className="text-sm">{weather.icon || '☀️'}</span>
                 <div>
                   <span className="font-black text-slate-800 text-xs mr-1">{weather.temp}</span>
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded uppercase">Live</span>
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded uppercase">
+                    Live
+                  </span>
                 </div>
               </div>
             ) : (
               <span className="text-[10px] text-slate-400">☀️ Đang tải thời tiết...</span>
             )}
 
-            {/* Budget & Sổ chi tiêu button */}
             <button
               type="button"
               onClick={() => setShowCostModal(true)}
@@ -753,20 +1170,11 @@ export const PlanTrip: React.FC = () => {
         }`}
       >
         <RouteMap
-          items={(selectedDay === 0
-            ? itinerary.days.flatMap((d) => d.items)
-            : itinerary.days.find((d) => d.day_number === selectedDay)?.items || itinerary.days[0]?.items || []
-          ).filter((it) => {
-            if (!selectedCategoryFilter) return true;
-            const cat = it.location?.category || 'tourist_spot';
-            if (selectedCategoryFilter === 'tourist_spot') {
-              return cat === 'tourist_spot' || cat === 'beach' || cat === 'shopping';
-            }
-            return cat === selectedCategoryFilter;
-          })}
+          items={filteredMapItems}
           dayNumber={selectedDay || 1}
           activeLocationId={activeLocationId}
           onSelectLocation={(locId) => setActiveLocationId(locId)}
+          onOriginChange={handleOriginChange}
           className="w-full h-full rounded-none border-0 shadow-none"
         />
 
@@ -782,7 +1190,7 @@ export const PlanTrip: React.FC = () => {
         )}
       </div>
 
-      {/* Mobile Responsive Navigation Bar (Fixed at bottom on phones/tablets) */}
+      {/* Mobile Responsive Navigation Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-2 flex items-center justify-around shadow-2xl">
         <button
           type="button"
@@ -794,7 +1202,13 @@ export const PlanTrip: React.FC = () => {
           }`}
         >
           <FaListUl className="text-base" />
-          <span>Lộ trình ({selectedDay === 0 ? itinerary.days.reduce((acc, d) => acc + d.items.length, 0) : itinerary.days.find((d) => d.day_number === selectedDay)?.items.length || 0})</span>
+          <span>
+            Lộ trình (
+            {selectedDay === 0
+              ? itinerary.days.reduce((acc, d) => acc + d.items.length, 0)
+              : itinerary.days.find((d) => d.day_number === selectedDay)?.items.length || 0}
+            )
+          </span>
         </button>
 
         <button
@@ -820,11 +1234,10 @@ export const PlanTrip: React.FC = () => {
         </button>
       </div>
 
-      {/* Sổ Chi Tiêu Modal (Interactive Budget Book) */}
+      {/* Sổ Chi Tiêu Modal */}
       {showCostModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col relative z-[10000]">
-            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg">
@@ -843,7 +1256,6 @@ export const PlanTrip: React.FC = () => {
               </button>
             </div>
 
-            {/* Total Summary Cards */}
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-slate-50 border border-slate-200/90 p-3.5 rounded-2xl text-center shadow-2xs">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Dự toán dự kiến</span>
@@ -857,23 +1269,35 @@ export const PlanTrip: React.FC = () => {
                   {totalActual.toLocaleString('vi-VN')} đ
                 </span>
               </div>
-              <div className={`p-3.5 rounded-2xl text-center border shadow-2xs ${costDiff >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
-                <span className={`text-[10px] uppercase font-bold block mb-1 ${costDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+              <div
+                className={`p-3.5 rounded-2xl text-center border shadow-2xs ${
+                  costDiff >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
+                }`}
+              >
+                <span
+                  className={`text-[10px] uppercase font-bold block mb-1 ${
+                    costDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                  }`}
+                >
                   {costDiff >= 0 ? 'Còn dư ngân sách' : 'Bội chi cảnh báo'}
                 </span>
-                <span className={`text-sm sm:text-base font-black ${costDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                <span
+                  className={`text-sm sm:text-base font-black ${
+                    costDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                  }`}
+                >
                   {Math.abs(costDiff).toLocaleString('vi-VN')} đ
                 </span>
               </div>
             </div>
 
-            {/* Visual Budget Progress Bar */}
             {totalPlanned > 0 && (
               <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-2xl space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                   <span>Tiến độ giải ngân kinh phí:</span>
                   <span className={totalActual > totalPlanned ? 'text-rose-600 font-black' : 'text-amber-800 font-black'}>
-                    {Math.round((totalActual / totalPlanned) * 100)}% ({totalActual.toLocaleString('vi-VN')} / {totalPlanned.toLocaleString('vi-VN')} đ)
+                    {Math.round((totalActual / totalPlanned) * 100)}% ({totalActual.toLocaleString('vi-VN')} /{' '}
+                    {totalPlanned.toLocaleString('vi-VN')} đ)
                   </span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
@@ -891,8 +1315,10 @@ export const PlanTrip: React.FC = () => {
               </div>
             )}
 
-            {/* Quick Add Expense Form */}
-            <form onSubmit={handleAddExpense} className="bg-amber-50/50 border border-amber-200/80 p-3.5 rounded-2xl space-y-2 shadow-2xs">
+            <form
+              onSubmit={handleAddExpense}
+              className="bg-amber-50/50 border border-amber-200/80 p-3.5 rounded-2xl space-y-2 shadow-2xs"
+            >
               <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
                 <FaPlus className="text-amber-700 text-xs" /> Thêm khoản chi mới vào sổ:
               </span>
@@ -934,10 +1360,11 @@ export const PlanTrip: React.FC = () => {
               </div>
             </form>
 
-            {/* Expense Items List */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[200px]">
               {expenses.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-xs">Chưa có khoản chi nào trong sổ. Hãy thêm mục mới bên trên!</div>
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  Chưa có khoản chi nào trong sổ. Hãy thêm mục mới bên trên!
+                </div>
               ) : (
                 expenses.map((item) => {
                   const itemId = item.id || item.tempId!;
@@ -954,7 +1381,6 @@ export const PlanTrip: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-4 shrink-0">
-                        {/* Planned cost */}
                         <div className="text-right">
                           <span className="text-[10px] text-slate-400 block leading-tight">Dự kiến</span>
                           <span className="font-semibold text-slate-600">
@@ -962,7 +1388,6 @@ export const PlanTrip: React.FC = () => {
                           </span>
                         </div>
 
-                        {/* Actual cost (editable inline) */}
                         <div className="text-right min-w-[95px]">
                           <span className="text-[10px] text-amber-700 block leading-tight font-bold">Thực chi</span>
                           {isEditing ? (
@@ -991,13 +1416,14 @@ export const PlanTrip: React.FC = () => {
                               className="font-bold text-slate-900 flex items-center justify-end gap-1 cursor-pointer hover:text-amber-600 transition"
                               title="Nhấp để nhập số tiền thực chi"
                             >
-                              <span>{item.actual_cost ? `${item.actual_cost.toLocaleString('vi-VN')} đ` : 'Chưa nhập'}</span>
+                              <span>
+                                {item.actual_cost ? `${item.actual_cost.toLocaleString('vi-VN')} đ` : 'Chưa nhập'}
+                              </span>
                               <FaEdit className="text-[10px] text-slate-400" />
                             </div>
                           )}
                         </div>
 
-                        {/* Delete button */}
                         <button
                           onClick={() => handleDeleteExpense(item)}
                           className="text-slate-300 hover:text-rose-500 transition p-1 cursor-pointer"
@@ -1012,7 +1438,6 @@ export const PlanTrip: React.FC = () => {
               )}
             </div>
 
-            {/* Modal Footer */}
             <div className="border-t border-slate-100 pt-3 flex items-center justify-between text-xs">
               <span className="text-slate-400 italic text-[11px]">
                 * Nhấp vào cột "Thực chi" để nhập số tiền chi thực tế sau mỗi hoạt động.
