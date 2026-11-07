@@ -64,6 +64,29 @@ def estimate_travel_time(distance_km: float) -> int:
     return max(5, int(distance_km * 2.3 + 3))
 
 
+def _arcgis_geocode(query_str: str, min_score: float = 80.0) -> Optional[Tuple[float, float, str]]:
+    """
+    Truy van toa do GPS chinh xac den tung so nha / ten duong / dia danh tai Viet Nam
+    thong qua ArcGIS World Geocoding Service (khong bi gioi han 1 req/s nhu Nominatim).
+    """
+    try:
+        q = urllib.parse.quote(query_str)
+        url = (
+            f"https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/"
+            f"findAddressCandidates?f=json&maxLocations=1&countryCode=VNM&SingleLine={q}"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "DiCungLacTravelApp/2.0"})
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            cands = data.get("candidates", [])
+            if cands and float(cands[0].get("score", 0)) >= min_score:
+                loc_xy = cands[0]["location"]
+                return float(loc_xy["y"]), float(loc_xy["x"]), cands[0].get("address", query_str)
+    except Exception:
+        pass
+    return None
+
+
 def resolve_departure_point(
     start_location: Optional[str],
     start_lat: Optional[float],
@@ -78,24 +101,66 @@ def resolve_departure_point(
             f"Điểm xuất phát: {label} (Vị trí GPS của bạn)",
             float(start_lat),
             float(start_lng),
-            f"Tọa độ GPS thực tế ({round(float(start_lat), 4)}, {round(float(start_lng), 4)}) - {label}"
+            f"Tọa độ GPS thực tế ({round(float(start_lat), 5)}, {round(float(start_lng), 5)}) - {label}"
         )
 
     lower = label.lower()
-    for key, (lat, lng, addr) in CITY_COORDINATES.items():
-        if key in lower:
-            return (
-                f"Điểm xuất phát: Vị trí hiện tại ({label})",
-                lat,
-                lng,
-                addr
-            )
+    exact_city_aliases = {
+        "tp. hồ chí minh": "hồ chí minh",
+        "tp hồ chí minh": "hồ chí minh",
+        "thành phố hồ chí minh": "hồ chí minh",
+        "tp.hcm": "hồ chí minh",
+        "tphcm": "hồ chí minh",
+        "hồ chí minh": "hồ chí minh",
+        "sài gòn": "sài gòn",
+        "thủ đức": "thủ đức",
+        "tp. thủ đức": "thủ đức",
+        "hà nội": "hà nội",
+        "tp. hà nội": "hà nội",
+        "đà nẵng": "đà nẵng",
+        "tp. đà nẵng": "đà nẵng",
+        "cần thơ": "cần thơ",
+        "tp. cần thơ": "cần thơ",
+        "bình dương": "bình dương",
+        "biên hòa": "biên hòa",
+        "đồng nai": "đồng nai",
+        "hải phòng": "hải phòng",
+        "vũng tàu": "vũng tàu",
+        "tp. vũng tàu": "vũng tàu",
+        "tây ninh": "tây ninh",
+        "tp. tây ninh": "tây ninh",
+        "đà lạt": "đà lạt",
+        "tp. đà lạt": "đà lạt",
+        "pleiku": "pleiku",
+        "phú quốc": "phú quốc",
+        "nha trang": "nha trang",
+        "bến tre": "bến tre",
+        "hà giang": "hà giang",
+    }
+    if lower in exact_city_aliases:
+        lat, lng, addr = CITY_COORDINATES[exact_city_aliases[lower]]
+        return (
+            f"Điểm xuất phát: Vị trí hiện tại ({label})",
+            lat,
+            lng,
+            addr
+        )
 
-    # Thu geocode bang OpenStreetMap Nominatim neu nguoi dung nhap dia chi cu the
+    # 1. Geocode bang ArcGIS World Geocoder neu nguoi dung nhap Quan/Huyen/Phuong/So nha cu the
+    arc_res = _arcgis_geocode(f"{label}, Vietnam", min_score=80.0)
+    if arc_res:
+        return (
+            f"Điểm xuất phát: {label}",
+            arc_res[0],
+            arc_res[1],
+            arc_res[2]
+        )
+
+    # 2. Thu geocode bang OpenStreetMap Nominatim
     try:
         q = urllib.parse.quote(f"{label}, Vietnam")
         url = f"https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q={q}"
-        req = urllib.request.Request(url, headers={"User-Agent": "DiCungLacTravelApp/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "DiCungLacTravelApp/2.0"})
         with urllib.request.urlopen(req, timeout=3) as resp:
             results = json.loads(resp.read().decode("utf-8"))
             if results:
@@ -110,6 +175,15 @@ def resolve_departure_point(
                 )
     except Exception:
         pass
+
+    for key, (lat, lng, addr) in CITY_COORDINATES.items():
+        if key in lower:
+            return (
+                f"Điểm xuất phát: Vị trí hiện tại ({label})",
+                lat,
+                lng,
+                addr
+            )
 
     return (
         f"Điểm xuất phát: {label}",
@@ -207,21 +281,37 @@ def _verify_or_geocode_coords(
     province: Province,
     raw_lat: Optional[float],
     raw_lng: Optional[float],
+    address: Optional[str] = None,
 ) -> Tuple[float, float]:
     """
     Kiem chung toa do GPS cua dia diem moi:
-    - Thu geocode bang OpenStreetMap Nominatim tai tinh do de lay toa do chinh xac 100%.
-    - Neu Nominatim tim thay ket qua nam trong ban kinh <= 45km quanh tam tinh thi dung toa do Nominatim.
-    - Neu khong, kiem tra raw_lat/raw_lng cua AI xem co nam trong ban kinh <= 45km quanh tam tinh khong.
+    - Uu tien 1: Geocode bang ArcGIS World Geocoder theo ten dia diem + dia chi + tinh thanh.
+    - Uu tien 2: Geocode bang OpenStreetMap Nominatim.
+    - Uu tien 3: Kiem tra raw_lat/raw_lng cua AI xem co nam trong ban kinh <= 45km quanh tam tinh khong.
     """
     p_lat = province.latitude or 10.7769
     p_lng = province.longitude or 106.7009
+    clean_search = loc_name.split("(")[0].strip()
 
+    # 1. ArcGIS World Geocoder (chinh xac den tung so nha / ten duong tai Viet Nam)
+    queries = []
+    if address and address.strip():
+        queries.append(f"{clean_search}, {address.strip()}, {province.name}, Vietnam")
+        queries.append(f"{address.strip()}, {province.name}, Vietnam")
+    queries.append(f"{clean_search}, {province.name}, Vietnam")
+
+    for q_str in queries:
+        arc = _arcgis_geocode(q_str, min_score=83.0)
+        if arc:
+            g_lat, g_lng, _ = arc
+            if calculate_distance(p_lat, p_lng, g_lat, g_lng) <= 55.0:
+                return g_lat, g_lng
+
+    # 2. OpenStreetMap Nominatim
     try:
-        clean_search = loc_name.split("(")[0].strip()
         q = urllib.parse.quote(f"{clean_search}, {province.name}, Vietnam")
         url = f"https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q={q}"
-        req = urllib.request.Request(url, headers={"User-Agent": "DiCungLacTravelApp/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "DiCungLacTravelApp/2.0"})
         with urllib.request.urlopen(req, timeout=2.5) as resp:
             results = json.loads(resp.read().decode("utf-8"))
             if results:
@@ -404,10 +494,32 @@ def generate_smart_itinerary(
         # Lay Diem so 1 (Xuat phat) va Diem so 2 (Khach san nhan phong/gui do)
         dep_loc = _get_or_create_departure_location(db, province.id, dep_name, dep_lat, dep_lng, dep_addr)
         hotel_loc = _get_central_hotel_for_province(db, province, existing_locs)
+        has_verified_catalog = len(existing_locs) >= 6
 
         days_result: List[ItineraryDayResponse] = []
         total_cost = 0
-        used_loc_ids = set()
+        used_loc_ids = {hotel_loc.id}
+
+        def pick_nearest_verified(
+            ref_coords: Optional[Tuple[float, float]],
+            preferred_cat: str,
+            allow_far: bool = False,
+        ) -> Optional[Location]:
+            unused = [l for l in existing_locs if l.id not in used_loc_ids and l.category != "hotel"]
+            if not unused:
+                return None
+            if not allow_far:
+                near_hotel = [
+                    l for l in unused
+                    if calculate_distance(hotel_loc.latitude, hotel_loc.longitude, l.latitude, l.longitude) <= 25.0
+                ]
+                if near_hotel:
+                    unused = near_hotel
+            same_cat = [l for l in unused if l.category == preferred_cat]
+            pool = same_cat if same_cat else unused
+            if ref_coords:
+                pool.sort(key=lambda x: calculate_distance(ref_coords[0], ref_coords[1], x.latitude, x.longitude))
+            return pool[0]
 
         for day_dict in dynamic_data.get("days", []):
             day_number = day_dict.get("day_number", 1)
@@ -482,38 +594,50 @@ def generate_smart_itinerary(
                 ):
                     continue
 
-                # Uu tien khop voi dia diem da xac thuc GPS 100% trong DB
-                db_loc = _match_verified_db_location(loc_name, existing_locs)
-
-                if db_loc and db_loc.id in used_loc_ids:
-                    continue
-
                 loc_cat = itm.get("category", "tourist_spot")
                 if loc_cat not in ["tourist_spot", "restaurant", "cafe", "beach", "shopping", "hotel"]:
                     loc_cat = "tourist_spot"
 
+                # Uu tien khop voi dia diem da xac thuc GPS 100% trong DB
+                db_loc = _match_verified_db_location(loc_name, existing_locs)
+                is_final_day = (day_number == num_days)
+
+                if db_loc and (
+                    db_loc.id in used_loc_ids
+                    or (not is_final_day and calculate_distance(hotel_loc.latitude, hotel_loc.longitude, db_loc.latitude, db_loc.longitude) > 25.0)
+                ):
+                    db_loc = pick_nearest_verified(prev_loc_coords, loc_cat, allow_far=is_final_day) if has_verified_catalog else None
+                    if not db_loc:
+                        continue
+
                 if not db_loc:
-                    verified_lat, verified_lng = _verify_or_geocode_coords(
-                        loc_name, province, itm.get("latitude"), itm.get("longitude")
-                    )
-                    real_img = resolve_real_image(loc_name, loc_cat, itm.get("image_url"))
-                    db_loc = Location(
-                        province_id=province.id,
-                        name=loc_name,
-                        category=loc_cat,
-                        description=itm.get("note", ""),
-                        address=itm.get("address", province.name),
-                        latitude=verified_lat,
-                        longitude=verified_lng,
-                        image_url=real_img,
-                        avg_cost_vnd=int(itm.get("avg_cost_vnd") or 50000),
-                        rating=4.8,
-                        tips=itm.get("tips", "Nên kiểm tra thời gian mở cửa và chuẩn bị trang phục phù hợp."),
-                        transport_info=itm.get("transport_info", "Di chuyển thuận tiện bằng xe máy hoặc ô tô.")
-                    )
-                    db.add(db_loc)
-                    db.flush()
-                    existing_locs.append(db_loc)
+                    if has_verified_catalog:
+                        # Tuyet doi khong cho AI tu bia dia diem gia / sai toa do trong cac tinh thanh da co kho du lieu xac thuc
+                        db_loc = pick_nearest_verified(prev_loc_coords, loc_cat, allow_far=is_final_day)
+                        if not db_loc:
+                            continue
+                    else:
+                        verified_lat, verified_lng = _verify_or_geocode_coords(
+                            loc_name, province, itm.get("latitude"), itm.get("longitude"), itm.get("address")
+                        )
+                        real_img = resolve_real_image(loc_name, loc_cat, itm.get("image_url"))
+                        db_loc = Location(
+                            province_id=province.id,
+                            name=loc_name,
+                            category=loc_cat,
+                            description=itm.get("note", ""),
+                            address=itm.get("address", province.name),
+                            latitude=verified_lat,
+                            longitude=verified_lng,
+                            image_url=real_img,
+                            avg_cost_vnd=int(itm.get("avg_cost_vnd") or 50000),
+                            rating=4.8,
+                            tips=itm.get("tips", "Nên kiểm tra thời gian mở cửa và chuẩn bị trang phục phù hợp."),
+                            transport_info=itm.get("transport_info", "Di chuyển thuận tiện bằng xe máy hoặc ô tô.")
+                        )
+                        db.add(db_loc)
+                        db.flush()
+                        existing_locs.append(db_loc)
                 else:
                     db_loc.image_url = resolve_real_image(db_loc.name, db_loc.category, db_loc.image_url)
                     db.commit()
@@ -525,17 +649,18 @@ def generate_smart_itinerary(
                     for mi in db.query(MenuItem).filter(MenuItem.location_id == db_loc.id).all()
                     if mi.name
                 }
-                for m in itm.get("menu_items", []):
-                    m_name = (m.get("name") or "").strip()
-                    if m_name and m_name.lower() not in existing_menu_names:
-                        db.add(MenuItem(
-                            location_id=db_loc.id,
-                            name=m_name,
-                            price_vnd=int(m.get("price_vnd") or 35000),
-                            is_signature=True
-                        ))
-                        existing_menu_names.add(m_name.lower())
-                db.commit()
+                if not existing_menu_names:
+                    for m in itm.get("menu_items", []):
+                        m_name = (m.get("name") or "").strip()
+                        if m_name and m_name.lower() not in existing_menu_names:
+                            db.add(MenuItem(
+                                location_id=db_loc.id,
+                                name=m_name,
+                                price_vnd=int(m.get("price_vnd") or 35000),
+                                is_signature=True
+                            ))
+                            existing_menu_names.add(m_name.lower())
+                    db.commit()
                 db.refresh(db_loc)
 
                 cur_coords = (db_loc.latitude, db_loc.longitude)
@@ -548,18 +673,47 @@ def generate_smart_itinerary(
                 time_slot_str = itm.get("time_slot", f"0{8 + order}:00")
                 if day_number == 1 and order == 3 and time_slot_str < "09:00":
                     time_slot_str = "09:30"
+                elif day_number > 1 and order == 2 and time_slot_str <= "08:00":
+                    time_slot_str = "08:30"
 
+                note_text = itm.get("note") if _match_verified_db_location(loc_name, [db_loc]) else db_loc.description
                 day_items.append(ItineraryItemResponse(
                     id=order,
                     day_number=day_number,
                     time_slot=time_slot_str,
                     order_in_day=order,
-                    note=itm.get("note", db_loc.description),
+                    note=note_text or db_loc.description,
                     travel_distance_km=dist,
                     travel_time_minutes=time_m,
                     location=LocationResponse.from_orm(db_loc)
                 ))
                 total_cost += db_loc.avg_cost_vnd
+                prev_loc_coords = cur_coords
+                order += 1
+
+            # Dam bao moi ngay luon du cac diem tham quan / an uong neu AI tra ve thieu
+            default_slots = [("09:30", "tourist_spot"), ("12:00", "restaurant"), ("15:00", "tourist_spot"), ("17:00", "cafe"), ("19:00", "restaurant")]
+            while len(day_items) < (6 if day_number == 1 else 5):
+                slot_idx = min(len(day_items) - (2 if day_number == 1 else 1), len(default_slots) - 1)
+                t_slot, pref_cat = default_slots[max(0, slot_idx)]
+                extra_loc = pick_nearest_verified(prev_loc_coords, pref_cat, allow_far=(day_number == num_days))
+                if not extra_loc:
+                    break
+                used_loc_ids.add(extra_loc.id)
+                cur_coords = (extra_loc.latitude, extra_loc.longitude)
+                dist = calculate_distance(prev_loc_coords[0], prev_loc_coords[1], cur_coords[0], cur_coords[1]) if prev_loc_coords else 0.0
+                time_m = estimate_travel_time(dist)
+                day_items.append(ItineraryItemResponse(
+                    id=order,
+                    day_number=day_number,
+                    time_slot=t_slot,
+                    order_in_day=order,
+                    note=extra_loc.description,
+                    travel_distance_km=dist,
+                    travel_time_minutes=time_m,
+                    location=LocationResponse.from_orm(extra_loc)
+                ))
+                total_cost += extra_loc.avg_cost_vnd
                 prev_loc_coords = cur_coords
                 order += 1
 
