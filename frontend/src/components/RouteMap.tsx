@@ -219,7 +219,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           ${p.cost ? `<div style="font-size: 11px; font-weight: 700; color: #059669;">Chi phí: ${p.cost.toLocaleString('vi-VN')}đ</div>` : ''}
           <div style="margin-top: 8px; padding-top: 4px; border-top: 1px solid #f1f5f9;">
             <a 
-              href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}" 
+              href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                p.isOrigin ? `${p.lat},${p.lng}` : `${p.name.split('(')[0].trim()}, ${p.address || ''}`
+              )}" 
               target="_blank" 
               rel="noreferrer"
               style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #1A73E8; font-weight: 700; text-decoration: none;"

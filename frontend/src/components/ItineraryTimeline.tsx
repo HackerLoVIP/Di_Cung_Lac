@@ -238,7 +238,11 @@ export const ItineraryTimeline: React.FC<ItineraryTimelineProps> = ({
                           {isExpanded && (
                             <>
                               <a
-                                href={`https://www.google.com/maps/dir/?api=1&destination=${item.location?.latitude},${item.location?.longitude}&travelmode=driving`}
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                                  item.location?.name?.toLowerCase().includes('điểm xuất phát')
+                                    ? `${item.location?.latitude},${item.location?.longitude}`
+                                    : `${item.location?.name?.split('(')[0]?.trim() || ''}, ${item.location?.address || ''}`
+                                )}&travelmode=driving`}
                                 target="_blank"
                                 rel="noreferrer"
                                 onClick={(e) => e.stopPropagation()}

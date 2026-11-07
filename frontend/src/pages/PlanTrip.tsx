@@ -267,7 +267,7 @@ export const PlanTrip: React.FC = () => {
         })
         .finally(() => setLoading(false));
     }
-  }, [savedTripId, destination, startLocation, provinceId, numDays, numNights, prompt]);
+  }, [savedTripId, destination, startLocation, startLat, startLng, provinceId, numDays, numNights, prompt]);
 
   useEffect(() => {
     if (!itinerary) return;
