@@ -64,10 +64,44 @@ def estimate_travel_time(distance_km: float) -> int:
     return max(5, int(distance_km * 2.3 + 3))
 
 
+def _google_maps_geocode(
+    query_str: str,
+    ref_lat: Optional[float] = None,
+    ref_lng: Optional[float] = None,
+    max_dist_km: float = 55.0,
+    max_span: float = 32000.0,
+) -> Optional[Tuple[float, float]]:
+    """
+    Truy van truc tiep Google Maps Embed Engine (google.com/maps?q=...&output=embed&hl=vi)
+    de lay cap toa do GPS (lat, lng) chinh xac 100% tren nen ban do Google Maps.
+    Chi chap nhan ket qua khi do rong vung tim kiem (span) <= max_span (tuc Google Maps
+    xac dinh dung 1 dia danh / dia chi cu the, khong phai danh sach nhieu chi nhanh lien tinh).
+    """
+    try:
+        q = urllib.parse.quote(query_str)
+        url = f"https://www.google.com/maps?q={q}&output=embed&hl=vi"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=4.5) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+            m = re.search(r"\[([0-9.]+),(-?\d+\.\d+),(-?\d+\.\d+)\]", html)
+            if m:
+                span = float(m.group(1))
+                lng = float(m.group(2))
+                lat = float(m.group(3))
+                if span <= max_span:
+                    if ref_lat is not None and ref_lng is not None:
+                        if calculate_distance(ref_lat, ref_lng, lat, lng) > max_dist_km:
+                            return None
+                    return round(lat, 6), round(lng, 6)
+    except Exception:
+        pass
+    return None
+
+
 def _arcgis_geocode(query_str: str, min_score: float = 80.0) -> Optional[Tuple[float, float, str]]:
     """
     Truy van toa do GPS chinh xac den tung so nha / ten duong / dia danh tai Viet Nam
-    thong qua ArcGIS World Geocoding Service (khong bi gioi han 1 req/s nhu Nominatim).
+    thong qua ArcGIS World Geocoding Service.
     """
     try:
         q = urllib.parse.quote(query_str)
@@ -146,7 +180,17 @@ def resolve_departure_point(
             addr
         )
 
-    # 1. Geocode bang ArcGIS World Geocoder neu nguoi dung nhap Quan/Huyen/Phuong/So nha cu the
+    # 1. Geocode truc tiep tren Google Maps Embed neu nguoi dung nhap dia chi / quan / huyen / duong cu the
+    gm_res = _google_maps_geocode(f"{label}, Việt Nam", max_span=40000.0)
+    if gm_res:
+        return (
+            f"Điểm xuất phát: {label}",
+            gm_res[0],
+            gm_res[1],
+            label
+        )
+
+    # 2. Geocode bang ArcGIS World Geocoder
     arc_res = _arcgis_geocode(f"{label}, Vietnam", min_score=80.0)
     if arc_res:
         return (
@@ -282,32 +326,30 @@ def _verify_or_geocode_coords(
     raw_lat: Optional[float],
     raw_lng: Optional[float],
     address: Optional[str] = None,
-) -> Tuple[float, float]:
+) -> Tuple[float, float, bool]:
     """
-    Kiem chung toa do GPS cua dia diem moi:
-    - Uu tien 1: Geocode bang ArcGIS World Geocoder theo ten dia diem + dia chi + tinh thanh.
-    - Uu tien 2: Geocode bang OpenStreetMap Nominatim.
-    - Uu tien 3: Kiem tra raw_lat/raw_lng cua AI xem co nam trong ban kinh <= 45km quanh tam tinh khong.
+    Kiem chung toa do GPS cua dia diem moi truc tiep tren Google Maps Embed Engine:
+    - Uu tien 1: Google Maps Embed (google.com/maps?q=...&output=embed) theo ten + dia chi + tinh thanh.
+    - Uu tien 2: OpenStreetMap Nominatim.
+    - Tra ve (lat, lng, is_verified_real).
     """
     p_lat = province.latitude or 10.7769
     p_lng = province.longitude or 106.7009
     clean_search = loc_name.split("(")[0].strip()
 
-    # 1. ArcGIS World Geocoder (chinh xac den tung so nha / ten duong tai Viet Nam)
-    queries = []
+    gm_queries = []
     if address and address.strip():
-        queries.append(f"{clean_search}, {address.strip()}, {province.name}, Vietnam")
-        queries.append(f"{address.strip()}, {province.name}, Vietnam")
-    queries.append(f"{clean_search}, {province.name}, Vietnam")
+        gm_queries.append(f"{clean_search}, {address.strip()}, {province.name}")
+    gm_queries.append(f"{clean_search}, {province.name}")
+    if address and address.strip() and len(address.strip()) > 6:
+        gm_queries.append(f"{address.strip()}, {province.name}")
 
-    for q_str in queries:
-        arc = _arcgis_geocode(q_str, min_score=83.0)
-        if arc:
-            g_lat, g_lng, _ = arc
-            if calculate_distance(p_lat, p_lng, g_lat, g_lng) <= 55.0:
-                return g_lat, g_lng
+    for q_str in gm_queries:
+        gm_res = _google_maps_geocode(q_str, ref_lat=p_lat, ref_lng=p_lng, max_dist_km=55.0, max_span=30000.0)
+        if gm_res:
+            return gm_res[0], gm_res[1], True
 
-    # 2. OpenStreetMap Nominatim
+    # OpenStreetMap Nominatim fallback
     try:
         q = urllib.parse.quote(f"{clean_search}, {province.name}, Vietnam")
         url = f"https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q={q}"
@@ -318,7 +360,7 @@ def _verify_or_geocode_coords(
                 g_lat = float(results[0]["lat"])
                 g_lng = float(results[0]["lon"])
                 if calculate_distance(p_lat, p_lng, g_lat, g_lng) <= 55.0:
-                    return g_lat, g_lng
+                    return round(g_lat, 6), round(g_lng, 6), True
     except Exception:
         pass
 
@@ -326,12 +368,12 @@ def _verify_or_geocode_coords(
         try:
             r_lat = float(raw_lat)
             r_lng = float(raw_lng)
-            if calculate_distance(p_lat, p_lng, r_lat, r_lng) <= 55.0:
-                return r_lat, r_lng
+            if calculate_distance(p_lat, p_lng, r_lat, r_lng) <= 35.0:
+                return round(r_lat, 6), round(r_lng, 6), False
         except Exception:
             pass
 
-    return p_lat, p_lng
+    return p_lat, p_lng, False
 
 
 def _get_or_create_departure_location(
@@ -440,18 +482,12 @@ def generate_smart_itinerary(
     # 1. Xac dinh chinh xac Diem so 1: Diem xuat phat thuc te cua nguoi dung
     dep_name, dep_lat, dep_lng, dep_addr = resolve_departure_point(start_location, start_lat, start_lng)
 
-    loc_count = len(existing_locs)
-    use_ai_dynamic = (not province) or (loc_count < max(6, num_days * 4)) or bool(user_prompt and user_prompt.strip())
+    # Luon su dung Gemini AI de thiet ke lich trinh ca nhan hoa (khong dap khuon dat san)
+    use_ai_dynamic = True
 
     if use_ai_dynamic:
         ai_dest = target_dest or (province.name if province else "Tây Ninh")
         enriched_prompt = user_prompt or "Khám phá danh lam thắng cảnh, ẩm thực đặc sản và quán cà phê đẹp"
-        if existing_locs:
-            verified_names = ", ".join([f"{l.name} ({l.category})" for l in existing_locs[:14]])
-            enriched_prompt = (
-                f"{enriched_prompt}. "
-                f"(BẮT BUỘC ưu tiên sử dụng đúng tên các địa điểm đã xác thực tọa độ GPS tại {ai_dest} sau đây: {verified_names})"
-            )
 
         dynamic_data = generate_dynamic_itinerary_with_gemini(
             destination=ai_dest,
@@ -491,10 +527,48 @@ def generate_smart_itinerary(
             ~Location.name.ilike("Khởi hành về%")
         ).all()
 
-        # Lay Diem so 1 (Xuat phat) va Diem so 2 (Khach san nhan phong/gui do)
+        # Lay Diem so 1 (Xuat phat)
         dep_loc = _get_or_create_departure_location(db, province.id, dep_name, dep_lat, dep_lng, dep_addr)
-        hotel_loc = _get_central_hotel_for_province(db, province, existing_locs)
-        has_verified_catalog = len(existing_locs) >= 6
+
+        # Lay Diem so 2 (Khach san / Homestay / Resort): Uu tien khach san do Gemini AI de xuat neu xac thuc duoc tren Google Maps
+        hotel_loc = None
+        for d_chk in dynamic_data.get("days", []):
+            for it_chk in d_chk.get("items", []):
+                if it_chk.get("category") == "hotel" and (it_chk.get("location_name") or "").strip():
+                    h_name = it_chk["location_name"].strip()
+                    matched_h = _match_verified_db_location(h_name, [l for l in existing_locs if l.category == "hotel"])
+                    if matched_h:
+                        hotel_loc = matched_h
+                        break
+                    h_lat, h_lng, h_ok = _verify_or_geocode_coords(
+                        h_name, province, it_chk.get("latitude"), it_chk.get("longitude"), it_chk.get("address")
+                    )
+                    if h_ok:
+                        h_img = resolve_real_image(h_name, "hotel", it_chk.get("image_url"))
+                        hotel_loc = Location(
+                            province_id=province.id,
+                            name=h_name,
+                            category="hotel",
+                            description=it_chk.get("note", f"Lưu trú và nhận phòng tại {h_name}."),
+                            address=it_chk.get("address", province.name),
+                            latitude=h_lat,
+                            longitude=h_lng,
+                            image_url=h_img,
+                            avg_cost_vnd=int(it_chk.get("avg_cost_vnd") or 400000),
+                            rating=4.8,
+                            tips=it_chk.get("tips", "Có thể gửi hành lý tại lễ tân nếu đến sớm trước giờ check-in 14h00."),
+                            transport_info=it_chk.get("transport_info", "Thuận tiện di chuyển đến các điểm tham quan trung tâm.")
+                        )
+                        db.add(hotel_loc)
+                        db.commit()
+                        db.refresh(hotel_loc)
+                        existing_locs.append(hotel_loc)
+                        break
+            if hotel_loc:
+                break
+
+        if not hotel_loc:
+            hotel_loc = _get_central_hotel_for_province(db, province, existing_locs)
 
         days_result: List[ItineraryDayResponse] = []
         total_cost = 0
@@ -544,7 +618,7 @@ def generate_smart_itinerary(
                 prev_loc_coords = (dep_loc.latitude, dep_loc.longitude)
                 order += 1
 
-                # Điểm 2: Di chuyển tới Khách sạn trung tâm nhận phòng / gửi đồ
+                # Điểm 2: Di chuyển tới Khách sạn nhận phòng / gửi đồ
                 dist_to_hotel = calculate_distance(prev_loc_coords[0], prev_loc_coords[1], hotel_loc.latitude, hotel_loc.longitude)
                 time_to_hotel = estimate_travel_time(dist_to_hotel)
                 day_items.append(ItineraryItemResponse(
@@ -588,7 +662,7 @@ def generate_smart_itinerary(
                 start_clean = (start_location or "tp. hồ chí minh").lower().strip()
                 dest_clean = province.name.lower().strip()
                 if (
-                    any(bad in lower_name for bad in ["xuất phát", "khởi hành", "di chuyển", "trở về", "gợi ý:", "nhận phòng", "check-in khách sạn"])
+                    any(bad in lower_name for bad in ["xuất phát", "khởi hành", "di chuyển", "trở về", "gợi ý:", "nhận phòng", "check-in khách sạn", "bến xe"])
                     or lower_name in [start_clean, dest_clean, "tp. hồ chí minh", "hồ chí minh", "sài gòn", "hà nội", "đà nẵng"]
                     or itm.get("category") == "hotel"
                 ):
@@ -598,28 +672,20 @@ def generate_smart_itinerary(
                 if loc_cat not in ["tourist_spot", "restaurant", "cafe", "beach", "shopping", "hotel"]:
                     loc_cat = "tourist_spot"
 
-                # Uu tien khop voi dia diem da xac thuc GPS 100% trong DB
                 db_loc = _match_verified_db_location(loc_name, existing_locs)
                 is_final_day = (day_number == num_days)
 
-                if db_loc and (
-                    db_loc.id in used_loc_ids
-                    or (not is_final_day and calculate_distance(hotel_loc.latitude, hotel_loc.longitude, db_loc.latitude, db_loc.longitude) > 25.0)
-                ):
-                    db_loc = pick_nearest_verified(prev_loc_coords, loc_cat, allow_far=is_final_day) if has_verified_catalog else None
+                if db_loc and db_loc.id in used_loc_ids:
+                    db_loc = pick_nearest_verified(prev_loc_coords, loc_cat, allow_far=is_final_day)
                     if not db_loc:
                         continue
 
                 if not db_loc:
-                    if has_verified_catalog:
-                        # Tuyet doi khong cho AI tu bia dia diem gia / sai toa do trong cac tinh thanh da co kho du lieu xac thuc
-                        db_loc = pick_nearest_verified(prev_loc_coords, loc_cat, allow_far=is_final_day)
-                        if not db_loc:
-                            continue
-                    else:
-                        verified_lat, verified_lng = _verify_or_geocode_coords(
-                            loc_name, province, itm.get("latitude"), itm.get("longitude"), itm.get("address")
-                        )
+                    # Xac thuc toa do cua dia diem moi do Gemini AI de xuat truc tiep tren Google Maps
+                    verified_lat, verified_lng, is_verified_real = _verify_or_geocode_coords(
+                        loc_name, province, itm.get("latitude"), itm.get("longitude"), itm.get("address")
+                    )
+                    if is_verified_real:
                         real_img = resolve_real_image(loc_name, loc_cat, itm.get("image_url"))
                         db_loc = Location(
                             province_id=province.id,
@@ -638,6 +704,11 @@ def generate_smart_itinerary(
                         db.add(db_loc)
                         db.flush()
                         existing_locs.append(db_loc)
+                    else:
+                        # Neu AI sinh ra ten quan ao khong ton tai tren Google Maps thi thay bang dia diem that gan nhat
+                        db_loc = pick_nearest_verified(prev_loc_coords, loc_cat, allow_far=is_final_day)
+                        if not db_loc:
+                            continue
                 else:
                     db_loc.image_url = resolve_real_image(db_loc.name, db_loc.category, db_loc.image_url)
                     db.commit()

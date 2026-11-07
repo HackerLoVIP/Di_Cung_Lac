@@ -153,18 +153,26 @@ def generate_dynamic_itinerary_with_gemini(
     api_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Sinh lich trinh du lich chi tiet tu dong bang Gemini 2.5 Flash cho bat ky diem den nao"""
+    import random
+    variation_hint = random.choice([
+        "Ưu tiên kết hợp hài hòa giữa thắng cảnh nổi tiếng và các quán ăn bản địa lâu đời được người dân địa phương yêu thích.",
+        "Ưu tiên lộ trình di chuyển thông minh theo cụm địa lý gần nhau, hạn chế quay đầu xe và chọn các quán có không gian đặc trưng.",
+        "Thiết kế trải nghiệm mới mẻ, cá nhân hóa sâu sắc theo đúng gu du lịch, ngân sách và nhóm khách đã yêu cầu.",
+    ])
     system_prompt = (
         f"Bạn là chuyên gia thiết kế lịch trình du lịch thực tế hàng đầu Việt Nam.\n"
         f"- Điểm đến: '{destination}'\n"
         f"- Xuất phát từ: '{start_location or 'TP. Hồ Chí Minh'}'\n"
         f"- Thời gian: {num_days} ngày {num_nights} đêm\n"
-        f"- Sở thích & yêu cầu của du khách: '{user_prompt or 'Khám phá danh lam thắng cảnh, ẩm thực đặc sản địa phương và quán cà phê đẹp'}'\n\n"
+        f"- Sở thích & yêu cầu của du khách: '{user_prompt or 'Khám phá danh lam thắng cảnh, ẩm thực đặc sản địa phương và quán cà phê đẹp'}'\n"
+        f"- Định hướng thiết kế lần này: {variation_hint}\n\n"
         "QUY TẮC BẮT BUỘC:\n"
         "1. TRẢ VỀ DUY NHẤT 1 KHỐI JSON HỢP LỆ (không viết bất kỳ lời dẫn hay markdown nào ngoài JSON).\n"
-        "2. TẤT CẢ địa điểm phải là ĐỊA DANH, KHÁCH SẠN, QUÁN ĂN, QUÁN CÀ PHÊ CÓ THẬT 100% ngoài đời thực tại điểm đến đó. CẤM TUYỆT ĐỐI đặt tên hành động như 'Xuất phát từ...', 'Khởi hành về...', 'Di chuyển đến...' hay tên chung chung như 'Quán ăn ven hồ (Gợi ý:...)'.\n"
-        "3. Tọa độ GPS (latitude, longitude) phải CHÍNH XÁC ngoài đời thực của từng địa điểm tại tỉnh đến.\n"
-        "4. Mỗi ngày có từ 4 đến 5 điểm dừng thực tế (Tham quan sáng -> Ăn trưa đặc sản -> Tham quan chiều -> Cà phê hoàng hôn -> Ăn tối/Chợ đêm) sắp xếp thuận đường di chuyển.\n"
-        "5. Cấu trúc JSON chính xác như sau:\n"
+        "2. TẤT CẢ địa điểm phải là ĐỊA DANH, KHÁCH SẠN/HOMESTAY/RESORT, QUÁN ĂN, QUÁN CÀ PHÊ CÓ THẬT 100% VÀ NỔI TIẾNG TRÊN GOOGLE MAPS tại điểm đến đó. CẤM TUYỆT ĐỐI đặt tên hành động như 'Xuất phát từ...', 'Khởi hành về...', 'Di chuyển đến...', 'Bến xe...' hay tên chung chung như 'Quán ăn ven hồ (Gợi ý:...)'.\n"
+        "3. Trong Ngày 1, BẮT BUỘC có 1 mục thuộc category 'hotel' (chọn khách sạn, homestay hoặc resort CÓ THẬT trên Google Maps tại điểm đến và phù hợp với mức ngân sách của khách).\n"
+        "4. Tọa độ GPS (latitude, longitude) và địa chỉ (address) phải CHÍNH XÁC ngoài đời thực trên Google Maps của từng địa điểm.\n"
+        "5. Mỗi ngày có từ 4 đến 5 điểm dừng thực tế (Tham quan sáng -> Ăn trưa đặc sản -> Tham quan chiều -> Cà phê hoàng hôn -> Ăn tối/Chợ đêm) sắp xếp thuận đường di chuyển.\n"
+        "6. Cấu trúc JSON chính xác như sau:\n"
         "{\n"
         '  "destination_name": "Tên tỉnh/thành phố chuẩn (ví dụ: Đà Lạt)",\n'
         '  "destination_description": "Mô tả cuốn hút, thực tế về điểm đến (1-2 câu)",\n'
@@ -176,8 +184,8 @@ def generate_dynamic_itinerary_with_gemini(
         '      "title": "Ngày 1: Tiêu đề hấp dẫn bám sát phong cách chuyến đi",\n'
         '      "items": [\n'
         "        {\n"
-        '          "time_slot": "07:30",\n'
-        '          "location_name": "Tên địa điểm/quán ăn thật 100%",\n'
+        '          "time_slot": "08:30",\n'
+        '          "location_name": "Tên địa điểm/khách sạn/quán ăn thật 100% trên Google Maps",\n'
         '          "category": "tourist_spot" | "restaurant" | "cafe" | "beach" | "shopping" | "hotel",\n'
         '          "address": "Số nhà, tên đường, phường/xã thực tế",\n'
         '          "latitude": 11.9404,\n'
@@ -196,7 +204,7 @@ def generate_dynamic_itinerary_with_gemini(
 
     raw_res = call_gemini_with_rotation(
         prompt=system_prompt,
-        temperature=0.25,
+        temperature=0.65,
         max_output_tokens=8192,
         override_key=api_key,
         expect_json=True,
