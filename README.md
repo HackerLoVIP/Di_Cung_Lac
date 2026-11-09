@@ -244,7 +244,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 | STT | Họ và tên | Mã số sinh viên (MSSV) | Vai trò chính | Nhiệm vụ phụ trách cụ thể |
 | :---: | :--- | :---: | :--- | :--- |
-| **1** | **Trần Hải Đăng** *(Trưởng nhóm)* | `231A010065` | Frontend Lead & Tích hợp hệ thống | • Thiết kế toàn bộ giao diện người dùng UI/UX (React TypeScript, Tailwind CSS)<br>• Tích hợp bản đồ lộ trình Leaflet tương tác, cuốn lịch trực quan, modal VietQR<br>• Đồng bộ phiên đăng nhập, xử lý State Management & kết nối API |
+| **1** | **Trần Hải Đăng** | `231A010065` | Frontend Lead & Tích hợp hệ thống | • Thiết kế toàn bộ giao diện người dùng UI/UX (React TypeScript, Tailwind CSS)<br>• Tích hợp bản đồ lộ trình Leaflet tương tác, cuốn lịch trực quan, modal VietQR<br>• Đồng bộ phiên đăng nhập, xử lý State Management & kết nối API |
 | **2** | **Lê Trọng Hiếu** | `231A290152` | Backend & AI Smart Planner | • Phát triển thuật toán AI Trip Planner (Google Gemini AI + OSRM Routing)<br>• Tối ưu hóa thứ tự cung đường di chuyển thực tế (km, phút) theo tọa độ GPS<br>• Xây dựng module tính toán, đối chiếu ngân sách và dịch vụ AI Chatbot |
 | **3** | **Phạm Đức Nhân** | `231A290154` | Backend & Kiến trúc CSDL | • Thiết kế kiến trúc Database Models (SQLAlchemy) & Quản lý Session<br>• Xây dựng hệ thống Xác thực người dùng (Auth JWT, Bcrypt, Google Login)<br>• Xây dựng API Quản lý Tỉnh thành (Provinces) & Kho Địa điểm (Locations) |
 | **4** | **Lê Phú An** | `231A290083` | Backend & Quản trị Hệ thống | • Xây dựng hệ thống API Quản trị Admin Dashboard (Users, Trips, Reviews, Stats)<br>• Xây dựng module Đánh giá/Review cộng đồng, Yêu thích (Wishlist)<br>• Xây dựng module thanh toán nâng cấp VIP (VietQR) và xuất báo cáo lịch trình PDF |
